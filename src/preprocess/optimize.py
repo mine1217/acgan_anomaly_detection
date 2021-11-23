@@ -65,7 +65,7 @@ def gmm_clustering(df: pd.DataFrame, n_clusters: int = 2) -> pd.DataFrame:
     Returns:
         pandas DataFrame:各クラスタへの所属確率
     """
-    gmm = GaussianMixture(n_components=n_clusters, max_iter=20)
+    gmm = GaussianMixture(n_components=n_clusters, max_iter=20, random_state=3)
     gmm.fit(df)
     prob = gmm.predict_proba(df)
     columns = [str(i) for i in range(0, len(prob[0]))]
@@ -99,7 +99,7 @@ def grouping_class(label: dict, prob: pd.DataFrame) -> pd.DataFrame:
     return class_label_df
 
 
-def make_best_class_label(input: str, save: str, combination_save: str):
+def make_best_class_label(input: str, save: str, combination_save: str, no_gmm: bool):
     """
     最適なクラスの組み合わせを探索して，それをクラスラベルとして保存する．
     また，いずれのクラスタ数においても，クラスが属していないクラスタが存在している場合は，適切な組み合わせなしとする．
@@ -121,24 +121,35 @@ def make_best_class_label(input: str, save: str, combination_save: str):
         [1] * len(input),
         columns=["label"],
         index=input.index)
-    for c in range(2, 8):
-        # Clustering
-        prob_df = gmm_clustering(input, n_clusters=c)
 
-        # Grouping to the highest probability cluster.
-        class_label = grouping_class(label, prob_df)
+    if no_gmm:
+        for c in range(3, 8):
+            prob_df = gmm_clustering(input, n_clusters=c)
+            best_class_label = grouping_class(label, prob_df)
+            print(c)
+            if len(best_class_label.columns) == 3:
+                break
+    else:
+        for c in range(2, 8):
+            # Clustering
+            prob_df = gmm_clustering(input, n_clusters=c)
 
-        # There is a cluster that does not have any labels.
-        if len(class_label.columns) < len(prob_df.columns):
-            continue
+            # # Grouping to the highest probability cluster.
+            class_label = grouping_class(label, prob_df)
+            
 
-        # Calc cross entropy loss
-        loss = log_loss(class_label, prob_df)
+            # There is a cluster that does not have any labels.
+            if len(class_label.columns) < len(prob_df.columns):
+                continue
 
-        # Update best
-        if loss < best_loss or best_loss < 0:
-            best_loss = loss
-            best_class_label = class_label
+            # # Calc cross entropy loss
+            loss = log_loss(class_label, prob_df)
+
+            # # Update best
+            if loss < best_loss or best_loss < 0:
+                best_loss = loss
+                best_class_label = class_label
+
     # Translate best_class_label from one hot to number
     best_class_label = pd.DataFrame(
         np.argmax(
@@ -214,13 +225,18 @@ def arg_parse():
         default="data/processed/combination/5032AB.json",
         type=str,
         help='save combination json path')
+    parser.add_argument(
+        "-ng",
+        "--no_gmm",
+        action='store_true',
+        help="fixed number of classes to don't use gmm")
     args = parser.parse_args()
     return args
 
 
 def main():
     args = arg_parse()
-    make_best_class_label(args.input, args.save, args.combination_save)
+    make_best_class_label(args.input, args.save, args.combination_save, args.no_gmm)
 
 
 if __name__ == '__main__':

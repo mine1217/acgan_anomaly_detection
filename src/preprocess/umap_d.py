@@ -32,6 +32,7 @@ def main():
     combination = list(combination.values())
     day_to_label = encode_day_to_label(input).values()
     class_labels = [combination[i] for i in day_to_label]
+    print(class_labels)
     num_classes = int(max(combination)) + 1
 
     #Encode label
@@ -63,16 +64,14 @@ def main():
     print(y)
     
     #UMAP
+    plt.figure(dpi=500)
 
     #次元削減する
-    mapper = umap.UMAP(min_dist = 0.5, random_state = 0)
+    mapper = umap.UMAP(random_state=0)
     embedding = mapper.fit_transform(X)
 
     #結果を二次元でプロットする
     embedding_x = embedding[:, 0]
-
-    plt.figure(dpi=500, figsize=(4,3))
-    
     embedding_y = embedding[:, 1]
     for n in np.unique(y):
         plt.scatter(embedding_x[y == n],
@@ -85,7 +84,6 @@ def main():
     plt.legend()
     #plt.show()
     plt.savefig(args.save)
-    print(args.save)
 
 def arg_parse():
     parser = argparse.ArgumentParser(

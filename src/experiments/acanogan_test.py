@@ -21,19 +21,35 @@ Example:
 
 """
 import _pathmagic
-import random
 import argparse
 import json
-import os
 
+import os
 import numpy as np
+import random
+import tensorflow as tf
+
+os.environ['PYTHONHASHSEED'] = '0'
+np.random.seed(0)
+random.seed(0)
+
+session_conf = tf.ConfigProto(
+    intra_op_parallelism_threads=1,
+    inter_op_parallelism_threads=1
+)
+
+from keras import backend as K
+
+tf.set_random_seed(0)
+sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
+K.set_session(sess)
+
 import pandas as pd
 from keras.optimizers import Adam
 from src.acanogan import acanogan_predict
 from src.acanogan.acanogan_model import ACAnoGAN
 from src.acgan import acgan
 from src.preprocess import optimize
-
 
 def arg_parse():
     parser = argparse.ArgumentParser()
@@ -66,7 +82,7 @@ def arg_parse():
         "-it",
         "--iterations",
         type=int,
-        default=100,
+        default=1000,
         help="parameter")
     parser.add_argument(
         "-w",
@@ -119,12 +135,8 @@ def random_class_label(class_labels):
                 break
     return new_class_labels
 
-
 def main():
     args = arg_parse()
-    random.seed(0)
-    np.random.seed(0)
-
     # Prepare data
     input = pd.read_csv(args.input, index_col=0, header=None)
     minmax = json.load(open(args.minmax))
@@ -164,6 +176,7 @@ def main():
     optim = Adam(lr=0.001, amsgrad=True)
     acanogan = ACAnoGAN(g=generator, d=discriminator, input_dim=100, w=args.w)
     acanogan.compile(optim)
+    acanogan.model.summary()
 
     # 各検証用データ用のモデルの初期値一時保存
     init_model_path = "models/experiments/acanogan/init.h5"

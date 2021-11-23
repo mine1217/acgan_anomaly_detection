@@ -1,53 +1,74 @@
+import _pathmagic
+import random
+import argparse
+import json
+import os
+
+import numpy as np
+import pandas as pd
+from keras.optimizers import Adam
+from src.acanogan import acanogan_predict
+from src.acanogan.acanogan_model import ACAnoGAN
+from src.acgan import cnnClassfier
+from src.preprocess import optimize
+
 import datetime
 import jpholiday
-import json
-import argparse
-import pandas as pd
-import numpy as np
 from matplotlib import pyplot as plt
-from sklearn import datasets
 import umap.umap_ as umap
+
 
 
 def main():
     args = arg_parse()
 
+    #予測に必要なデータロード
+    
     input = pd.read_csv(args.input, header=None, index_col=0)
+    minmax = json.load(open(args.minmax))
+    minimum, maximum = minmax["minimum"], minmax["maximum"]
 
     combination = json.load(open(args.combination))
     combination = list(combination.values())
-    class_labels = encode_day_to_label(input).values()
-
-    if args.weekday_label:
-        class_labels = [combination[i] for i in class_labels]
-    else:
-        class_labels = list(class_labels)
+    day_to_label = encode_day_to_label(input).values()
+    class_labels = [combination[i] for i in day_to_label]
+    print(class_labels)
+    num_classes = int(max(combination)) + 1
 
     #Encode label
     label = encode_day_to_label(input)
 
     #データセットを読み込む
-    dataset = datasets.load_digits()
     X, y = input.values, class_labels
+    dates = input.index.to_list()
+    input_data = np.reshape(X, [len(X),120,1])
+    
+    #discriminatorロード
+    cnn = cnnClassfier.cnnClassfier(
+        num_classes=num_classes,
+        minimum=minimum,
+        maximum=maximum
+    )
+    classfier = cnn.classfier
+    classfier.load_weights(args.model)
 
-    A=0
-    B=0
-    C=0
-    for a in class_labels:
-        if (a == 0):
-            A+=1
-        elif (a == 1):
-            B+=1
-        elif(a == 2):
-            C+=1
-    print(A,B,C)
-
+    #予測
+    output = classfier.predict(input_data)
+    p_tf, p_class_prob = output[0], np.array(output[1])
+    y = []
+   
+    #所属確立の高いindexをクラスにする
+    for cp in p_class_prob:
+        y.append(np.argmax(cp))
+    
+    print(y)
+    
+    #UMAP
+    plt.figure(dpi=500)
 
     #次元削減する
     mapper = umap.UMAP(random_state=0)
     embedding = mapper.fit_transform(X)
-
-    plt.figure(dpi=500)
 
     #結果を二次元でプロットする
     embedding_x = embedding[:, 0]
@@ -56,12 +77,6 @@ def main():
         plt.scatter(embedding_x[y == n],
                     embedding_y[y == n],
                     label=n)
-    
-    if args.day_label:
-        day_labels = input.index.to_list()
-
-        for i, d in enumerate(day_labels):
-            plt.annotate(d, (embedding_x[i],embedding_y[i]), fontsize=4)
         
 
     #グラフを表示する
@@ -69,7 +84,6 @@ def main():
     plt.legend()
     #plt.show()
     plt.savefig(args.save)
-    print(args.save)
 
 def arg_parse():
     parser = argparse.ArgumentParser(
@@ -81,6 +95,16 @@ def arg_parse():
         type=str,
         help='input csv path')
     parser.add_argument(
+        "-m",
+        "--model",
+        default="models/experiments/cnn/5032AB/classfier.h5",
+        help="cnn model file path")
+    parser.add_argument(
+        "-mm",
+        "--minmax",
+        default="data/experiments/minmax/5032AB.json",
+        help="data minmax file path")
+    parser.add_argument(
         "-c",
         "--combination",
         default="data/experiments/combination/5032AB.json",
@@ -90,16 +114,6 @@ def arg_parse():
         "--save",
         default="output/experiments/umap/5032AB.png",
         help="File to save the roc curve")
-    parser.add_argument(
-        "-d",
-        "--day_label",
-        action='store_true',
-        help="Plot day label")
-    parser.add_argument(
-        "-w",
-        "--weekday_label",
-        action='store_false',
-        help="class or day of week")
     args = parser.parse_args()
     return args
 

@@ -13,7 +13,7 @@ def augmentation(data: np.array) -> np.array:
     Returns:
         np.array:Augmented data
     """
-    np.random.seed(0)
+    #np.random.seed(0)
     data = add_random_noise(data)
     data = width_shift_range(data)
     return data
@@ -47,7 +47,7 @@ def width_shift_range(data: np.array) -> np.array:
     data = np.insert(data, -1, 0, axis=1)
     data = np.insert(data, 0, 0, axis=1)
 
-    shift_range = np.random.randint(-1, 2)
+    shift_range = np.random.randint(-2, 2)
     data = np.roll(data, shift_range, axis=1)
     data = np.delete(data, [0, len(data)], axis=1)
     return data

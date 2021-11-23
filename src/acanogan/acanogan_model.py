@@ -1,11 +1,32 @@
 """
 AC-GANにより学習済みのモデルを用いて，入力データの異常度を求めるAC-AnoGANモデル．
 """
+import os
 import numpy as np
+import random
+import tensorflow as tf
+
+os.environ['PYTHONHASHSEED'] = '0'
+np.random.seed(0)
+random.seed(0)
+
+session_conf = tf.ConfigProto(
+    intra_op_parallelism_threads=1,
+    inter_op_parallelism_threads=1
+)
+
+from keras import backend as K
+
+tf.set_random_seed(0)
+sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
+K.set_session(sess)
+
+
+
+
 from keras.models import Model
 from keras.layers import Input, Dense
 import keras.backend as K
-
 
 def feature_extractor(d: Model, layer_name="d_conv2") -> Model:
     """
@@ -82,16 +103,18 @@ class ACAnoGAN:
         self.w = w
         # self.z = np.random.randn(1, self.input_dim)
         self.z = None
+
+        self.generator.trainable = False
         # Input layer cann't be trained. Add new layer as same size & same
         # distribution
-        acanogan_input_data = Input(shape=(input_dim,))
+        acanogan_input_data = Input(shape=(input_dim,)) 
         g_input_data = Dense(
             input_dim,
             activation='tanh',
             trainable=True)(acanogan_input_data)
         label = Input(shape=[1, ], dtype="int32")
         g_out = self.generator([g_input_data, label])
-        self.model = Model(inputs=[acanogan_input_data, label], outputs=g_out) ## Model(input=[generatorに入れるノイズ, クラスラベル])
+        self.model = Model(inputs=[acanogan_input_data, label], outputs=g_out)
         self.model_weight = None
 
     def compile(self, optimizer):
@@ -109,7 +132,7 @@ class ACAnoGAN:
             self,
             x: np.array,
             label: np.array,
-            iterations: int = 10) -> tuple:
+            iterations: int = 100) -> tuple:
         """
         xの異常度を求める．
 
@@ -124,13 +147,11 @@ class ACAnoGAN:
         # z = np.random.uniform(-1, 1, size=(1, self.input_dim))
         # z = Input((100,), name="Z")
         # learning for changing latent
-        self.z = np.random.randn(1, self.input_dim) ## 正規分布の乱数を100生成
-        loss = self.model.fit([self.z, label], x, batch_size=1, 
-                              epochs=iterations, verbose=0) ## 異常値計算 batch_sizeはデータ数　一個づつ検証するので1　epochs=一つの訓練データを何回繰り返して学習させるか　今回は10回
+        self.z = np.random.randn(1, self.input_dim)
+        loss = self.model.fit([self.z, label], x, batch_size=1,
+                              epochs=iterations, verbose=0)
         loss = loss.history['loss'][-1]
         generated_data = self.model.predict([self.z, label])
-
-        print(loss)
 
         return loss, generated_data
 

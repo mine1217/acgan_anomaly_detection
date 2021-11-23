@@ -56,6 +56,7 @@ class ACGAN:
             model_save: str = "models/acgan/5032AB/",
             is_progress_save: bool = False,
             model_progress_save: str = "models/acgan/progress/5032AB/",
+            batch_size: int = 32
     ):
         self.num_classes = num_classes
         self.minimum, self.maximum = minimum, maximum
@@ -70,7 +71,10 @@ class ACGAN:
         self.width = 120
         self.channel = 1
         self.z_size = 100
-        self.optimizer = Adam()
+        self.start_filters = 512
+        self.hidden_dim = 64
+        self.batch_size = batch_size
+        self.Goptimizer = Adam(0.0002, 0.5)
         self.losses = [
             'binary_crossentropy',
             'sparse_categorical_crossentropy']
@@ -119,32 +123,55 @@ class ACGAN:
             self.num_classes,
             self.z_size)(label))
         model_input = multiply([z, label_embedding])
-        start_filters = 256
+        model_input = Reshape(
+            (self.z_size, 1), input_shape=(self.z_size,))(model_input)
+
+        x = CuDNNLSTM(units=self.hidden_dim, return_sequences=True)(model_input)
+        x = Bidirectional(CuDNNLSTM(units=self.hidden_dim))(x)
+        x = Dense(int(self.start_filters / 2))(x)
+        x = LeakyReLU(alpha=0.2)(x)
+        x = BatchNormalization(momentum=0.8)(x)
+        x = Dense(self.start_filters)(x)
+        x = LeakyReLU(alpha=0.2)(x)
+        x = BatchNormalization(momentum=0.8)(x)
+        x = Dense(self.start_filters * 2)(x)
+        x = LeakyReLU(alpha=0.2)(x)
+        x = BatchNormalization(momentum=0.8)(x)
+        x = Dense(np.prod(self.width))(x)
+        x = Reshape((self.width,1))(x)
+   
+    
+    
+        # start_filters = 256
+     
         # 2Upsampling adjust
-        in_w = int(self.width / 4)
-        x = Dense(
-            in_w *
-            start_filters,
-            # activation="tanh",
-            name="g_dense1")(model_input)
-        x = mish_keras.Mish()(x)
-        x = BatchNormalization()(x)
-        x = Reshape(
-            (in_w, start_filters), input_shape=(
-                in_w * start_filters,))(x)
-        x = UpSampling1D(size=2)(x)
-        x = Conv1D(filters=64, kernel_size=5, padding="same",
-                   # activation="tanh",
-                   name="g_conv1")(x)
-        x = mish_keras.Mish()(x)
-        x = BatchNormalization()(x)
-        x = UpSampling1D(size=2)(x)
-        x = Conv1D(
-            filters=1,
-            kernel_size=15,
-            padding="same",
-            # original_activations="tanh",
-            name="g_conv2")(x)
+        # in_w = int(self.width / 4)
+        # x = Dense(
+        #     in_w *
+        #     start_filters,
+        #     # activation="tanh",
+        #     name="g_dense1")(model_input)
+        # x = mish_keras.Mish()(x)
+        # x = BatchNormalization()(x)
+        # x = Reshape(
+        #     (in_w, start_filters), input_shape=(
+        #         in_w * start_filters,))(x)
+        # x = UpSampling1D(size=2)(x)
+        # x = Conv1D(filters=64, kernel_size=5, padding="same",
+        #            # activation="tanh",
+        #            name="g_conv1")(x)
+        # x = mish_keras.Mish()(x)
+        # x = BatchNormalization()(x)
+        # x = UpSampling1D(size=2)(x)
+        # x = CuDNNLSTM(units=self.hidden_dim, return_sequences=True)(x)
+        # x = TimeDistributed(Dense(self.channel))(x)
+        # # x = Conv1D(
+        #     filters=1,
+        #     kernel_size=15,
+        #     padding="same",
+        #     # original_activations="tanh",
+        #     name="g_conv2")(x)
+
         outputs = Activation(alpha_sign.AlphaSign())(x)
         # model.add(BatchNormalization())
         # model.add(Flatten())
@@ -160,29 +187,43 @@ class ACGAN:
             keras Model:Discriminator
         """
         input = Input(shape=(self.width, self.channel))
-        x = Conv1D(
-            filters=64,
-            kernel_size=15,
-            strides=2,
-            padding="same",
-            # activation="relu",
-            name="d_conv1")(input)
-        x = mish_keras.Mish()(x)
-        x = BatchNormalization()(x)
-        x = Conv1D(
-            filters=128,
-            kernel_size=5,
-            strides=2,
-            padding="same",
-            # activation="relu",
-            name="d_conv2")(x)
-        x = mish_keras.Mish()(x)
-        x = BatchNormalization()(x)
-        x = Flatten()(x)
-        x = Dense(units=1024,
-                  # activation="relu",
-                  name="d_dense1")(x)
-        x = mish_keras.Mish()(x)
+        x = CuDNNLSTM(units=self.hidden_dim, return_sequences=True)(input)
+        x = Bidirectional(CuDNNLSTM(units=self.hidden_dim))(x)
+        x = Dense(self.start_filters)(x)
+        x = LeakyReLU(alpha=0.2)(x)
+        x = BatchNormalization(momentum=0.8)(x)
+        x = Dense(self.start_filters)(x)
+        x = LeakyReLU(alpha=0.2)(x)
+        
+
+        
+        # x = TimeDistributed(Dense(1, activation="relu"))(x)
+        # x = mish_keras.Mish()(x)
+        # x = BatchNormalization()(x)
+        # x = Conv1D(
+        #     filters=64,
+        #     kernel_size=15,
+        #     strides=2,
+        #     padding="same",
+        #     # activation="relu",
+        #     name="d_conv1")(x)
+        # x = mish_keras.Mish()(x)
+        # x = BatchNormalization()(x)
+        # x = Conv1D(
+        #     filters=128,
+        #     kernel_size=5,
+        #     strides=2,
+        #     padding="same",
+        #     # activation="relu",
+        #     name="d_conv2")(x)
+        # x = mish_keras.Mish()(x)
+        # x = BatchNormalization()(x)
+        # x = Flatten()(x)
+        # x = Dense(units=1024,
+        #           # activation="relu",
+        #           name="d_dense1")(x)
+        # x = mish_keras.Mish()(x)
+
         features = BatchNormalization()(x)
 
         # real or face
@@ -305,7 +346,7 @@ class ACGAN:
         plt.xlabel('iteration')
         plt.ylabel('loss') 
         plt.legend()
-        plt.ylim([0.6,0.8])
+        # plt.ylim([0.6,0.8])
 
         args = arg_parse()
 

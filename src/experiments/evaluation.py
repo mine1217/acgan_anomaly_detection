@@ -1,5 +1,6 @@
 import argparse
 import os
+import numpy as np
 
 import _pathmagic
 import pandas as pd
@@ -27,7 +28,7 @@ def make_roc_dataset(normal, anomaly):
     return roc_dataset
 
 
-def cutoff(roc_dataset, fprs, tprs, thresholds):
+def cutoff(roc_dataset, fprs, tprs, thresholds, n_avg, a_avg):
     """
 
     Args:
@@ -59,7 +60,9 @@ def cutoff(roc_dataset, fprs, tprs, thresholds):
                      "recall": recall,
                      "specificity": specificity,
                      "f1_score": f1_score,
-                     "auc": auc}
+                     "auc": auc,
+                     "nomal_score_avg": n_avg,
+                     "anomaly_score_avg": a_avg,}
     return cutoff_result
 
 
@@ -106,12 +109,11 @@ def make_detect_accuracy(normal_file, anomaly_file, plot_save, accuracy_save):
     dataset = make_roc_dataset(normal_score, anomaly_score)
     fprs, tprs, thres = metrics.roc_curve(
         dataset.y.to_list(), dataset.score.to_list())
-    
-    print(len(dataset.y.to_list()))
-
 
     roc_curve_data = {"fprs": fprs, "tprs": tprs, "thres": thres}
-    cutoff_result = cutoff(dataset, fprs, tprs, thres)
+    n_avg = np.average(normal_score.values)
+    a_avg = np.average(anomaly_score.values)
+    cutoff_result = cutoff(dataset, fprs, tprs, thres, n_avg, a_avg)
 
     cutoff_result_df = pd.DataFrame.from_dict(cutoff_result, orient='index').T
     os.makedirs(os.path.dirname(accuracy_save), exist_ok=True)

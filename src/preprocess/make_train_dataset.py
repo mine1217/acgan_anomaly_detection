@@ -45,8 +45,14 @@ def make_dataset(input: str, output: str):
     input = pd.read_csv(input, header=None, index_col=0)
     dataset = except_outlier(input)
     os.makedirs(save_dir, exist_ok=True)
+    print(output)
     if len(dataset) >= 30:
         dataset.to_csv(output, header=False)
+    else:
+        print("*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!")
+        print("                           too short dataset                                ")
+        print("*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!*!")
+
 
 
 def arg_parse():

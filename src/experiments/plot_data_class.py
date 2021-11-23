@@ -4,8 +4,12 @@ import os
 import csv
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import argparse
 import matplotlib
+import datetime
+import jpholiday
+import json
 
 matplotlib.use("Agg")  # グラフ保存
 '''
@@ -26,6 +30,11 @@ parser.add_argument(
     default="output/elect_graph/5032AB/",
     type=str,
     help='保存先ディレクトリ')
+parser.add_argument(
+    "-c",
+    "--combination",
+    default="data/experiments/combination/5032AB.json",
+    help="combination(best label to date) file path")
 args = parser.parse_args()  # 引数
 
 days = []
@@ -44,6 +53,36 @@ for line in csv_file:
         print(line[0])
         print(day_max)
 ylim = max(40, ylim)
+
+def encode_day_to_label(df: pd.DataFrame) -> dict:
+    """
+    日付を曜日，祝日により数値にエンコードする．[月,日]=[0,6]，祝日=7
+
+    Args:
+        df(pandas DataFrame):Daily data
+    Returns:
+        dict:{date\:label}
+    """
+    index_list = df.index.to_list()
+    dates = list(map(lambda x: datetime.datetime.strptime(
+        "20" + x, '%Y.%m.%d'), index_list))
+    label = list(map(lambda x: x.weekday(), dates))
+    holiday_label = list(map(lambda x: jpholiday.is_holiday(
+        datetime.date(x.year, x.month, x.day)), dates))
+    label = [7 if holiday_label[i] else label[i] for i in range(len(label))]
+    return dict(zip(index_list, label))
+
+combination = json.load(open(args.combination))
+combination = list(combination.values())
+input = pd.read_csv(args.input, header=None, index_col=0)
+day_to_label = encode_day_to_label(input).values()
+num_classes = int(max(combination)) + 1
+
+input_for_class = np.empty((num_classes,))
+
+for n in range(num_classes):
+    input_for_class[n] = input_data[day_to_label==n]
+
 
 
 def mkdir(dir):
