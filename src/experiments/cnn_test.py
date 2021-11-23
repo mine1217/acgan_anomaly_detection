@@ -88,7 +88,7 @@ def arg_parse():
     parser.add_argument(
         "-us",
         "--umap_save",
-        default="output/experiments/umap/cnn/5032AB.csv",
+        default="output/experiments/umap/cnn/5032AB.png",
         help="File to save the roc accuracy")
     args = parser.parse_args()
     return args

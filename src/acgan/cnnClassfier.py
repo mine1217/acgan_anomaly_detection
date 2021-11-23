@@ -168,7 +168,7 @@ class cnnClassfier:
         dir_path = self.model_save
         os.makedirs(dir_path, exist_ok=True)
         # self.combined.save_weights(dir_path + self.data_id + '.h5')
-        self.classfier.save_weights(dir_path + 'classfier.h5')
+        self.classfier.save_weights(dir_path + '.h5')
 
         plt.figure(dpi=500)
 
@@ -299,7 +299,7 @@ def main():
         maximum=maximum,
         w=0.1,
         model_save=args.model_save)
-    cnn.train(x_train, y_train, iterations=1000, batch_size=32,
+    cnn.train(x_train, y_train, iterations=2000, batch_size=32,
                 interval=100)
 
 
