@@ -1,0 +1,80 @@
+"""
+train_test_split
+date以降の日のデータをtestデータとする．
+
+Example:
+    503342 example
+
+    ::
+        python3 src/experiments/train_test_split.py --input data/experiments/all/503342.csv --date 2020.01.01\
+ --train_save data/experiments/train/503342.csv --test data/experiments/test/503342.csv
+"""
+import argparse
+import os
+import pandas as pd
+import datetime
+
+
+def train_test_split(input, split_date, train_save, test_save):
+    """
+    train_test_split
+
+    Args:
+    """
+    input = pd.read_csv(input, header=None, index_col=0)
+    os.makedirs(os.path.dirname(train_save), exist_ok=True)
+    os.makedirs(os.path.dirname(test_save), exist_ok=True)
+    # split_date = date[2:]
+    split_date = datetime.datetime.strptime(
+        split_date,
+        "%Y.%m.%d")
+    dates = [
+        datetime.datetime.strptime(
+            f"20{d}",
+            "%Y.%m.%d") for d in input.index.to_list()]
+    train_dates = [d.strftime("%Y.%m.%d")[2:] for d in dates if split_date > d]
+    test_dates = [d.strftime("%Y.%m.%d")[2:] for d in dates if split_date <= d]
+    train = input.loc[train_dates]
+    test = input.loc[test_dates]
+    train.to_csv(train_save, header=False)
+    test.to_csv(test_save, header=False)
+
+
+def arg_parse():
+    parser = argparse.ArgumentParser(
+        description='')
+    parser.add_argument(
+        '--input',
+        '-i',
+        default="data/experiments/all/503342.csv",
+        type=str,
+        help='input csv path')
+    parser.add_argument(
+        '--date',
+        '-d',
+        default="2020.01.01",
+        type=str,
+        help='split date')
+    parser.add_argument(
+        '--train_save',
+        '-trs',
+        default="data/experiments/train/503342.csv",
+        type=str,
+        help='train save csv path')
+    parser.add_argument(
+        '--test_save',
+        '-tes',
+        default="data/experiments/test/503342.csv",
+        type=str,
+        help='test save csv path')
+    args = parser.parse_args()
+    return args
+
+
+def main():
+    args = arg_parse()
+    train_test_split(args.input, args.date, args.train_save, args.test_save)
+
+
+if __name__ == '__main__':
+    main()

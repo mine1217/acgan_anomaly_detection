@@ -1,0 +1,21 @@
+version: '3'
+services:
+  production:
+    image: minamotofordocker/sensepro_anomaly_detection:latest
+    volumes:
+      - /home/ci/sensepro_anomaly_detection:/working
+    stdin_open: true
+    tty: true
+    working_dir: /working
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+
+  testing:
+    image: minamotofordocker/sensepro_anomaly_detection:latest
+    volumes:
+      - ${PWD}/:/working
+    stdin_open: true
+    tty: true
+    working_dir: /working
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
