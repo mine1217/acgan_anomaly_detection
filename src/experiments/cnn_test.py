@@ -50,6 +50,7 @@ from src.acgan import cnnClassfier
 from sklearn.preprocessing import label_binarize
 from sklearn import metrics
 from matplotlib import pyplot as plt
+from matplotlib import cm
 import umap.umap_ as umap
 
 def arg_parse():
@@ -90,8 +91,35 @@ def arg_parse():
         "--umap_save",
         default="output/experiments/umap/cnn/5032AB.png",
         help="File to save the roc accuracy")
+    parser.add_argument(
+        "-rs",
+        "--roc_save",
+        default="output/experiments/roc_curve/5032AB_cnn.png",
+        help="File to save the roc curve")
     args = parser.parse_args()
     return args
+
+def plot_roc_curve(
+        roc_curve_data,
+        save_path="output/experiments/roc_curve/roc_test.png"):
+    plt.figure(figsize=(9, 9))
+    # plt.figure(figsize=(5, 5))
+    plt.rcParams["font.size"] = 25
+    plt.xlabel('FPR: False Positive Rate')
+    plt.ylabel('TPR: True Positive Rate')
+    plt.grid()
+    plt.rcParams["font.size"] = 20
+    plt.xticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    plt.plot([0, 1], [0, 1], color='gray', lw=2, linestyle='--')
+    # for i, roc_curve_data in enumerate(roc_curve_datas):
+    # plt.plot(
+    #     roc_curve_data["fprs"],
+    #     roc_curve_data["tprs"],
+    #     lw=2)
+    # plt.legend(loc='lower right')
+    # os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    # plt.savefig(save_path)
+    # plt.show()
 
 def main():
     args = arg_parse()
@@ -152,6 +180,32 @@ def main():
         correct_class = np.delete(label_binarize(class_labels, classes=[0,1,2]), 2, axis=1)
     else:
         correct_class = label_binarize(class_labels, classes=list(range(num_classes)))
+
+    print(correct_class[:,0].shape)
+
+    # roc plot
+    plt.figure(figsize=(9, 9))
+    plt.rcParams["font.size"] = 25
+    plt.xlabel('FPR: False Positive Rate')
+    plt.ylabel('TPR: True Positive Rate')
+    plt.grid()
+    plt.rcParams["font.size"] = 20
+    plt.xticks([0, 0.2, 0.4, 0.6, 0.8, 1.0])
+    plt.plot([0, 1], [0, 1], color='gray', lw=2, linestyle='--')
+
+    colorlist = ["r", "g", "b", "c", "m", "y", "k", "w"]
+    for i in range(num_classes):
+        fprs, tprs, thres = metrics.roc_curve(correct_class[:,i], predict_class[:,i])
+        roc_curve_data = {"fprs": fprs, "tprs": tprs, "thres": thres}
+        plt.plot(
+            roc_curve_data["fprs"],
+            roc_curve_data["tprs"],
+            label='class'+str(i),
+            color=colorlist[i],
+            lw=2)
+    os.makedirs(os.path.dirname(args.roc_save), exist_ok=True)
+    plt.savefig(args.roc_save)
+
 
     # score
     auc = metrics.roc_auc_score(correct_class, predict_class, multi_class="ovo")
