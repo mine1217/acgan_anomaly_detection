@@ -43,27 +43,26 @@ def feature_extractor(d: Model, layer_name="d_conv2") -> Model:
         inputs=d.layers[0].input,
         outputs=d.get_layer(layer_name).output)
     intermidiate_model.compile(loss='binary_crossentropy', optimizer='adam')
-    intermidiate_model.trainable = False
     # intermidiate_model.summary()
     return intermidiate_model
 
 
-def sum_of_discrimination(y_true, y_pred, d: Model):
-    """
-    Discrimination loss.
+# def sum_of_discrimination(y_true, y_pred, d: Model):
+#     """
+#     Discrimination loss.
 
-    Args:
-        y_true:正解値
-        y_pred:予測値
-        d:Discriminator model
+#     Args:
+#         y_true:正解値
+#         y_pred:予測値
+#         d:Discriminator model
 
-    Returns:
-        y_true, y_predのDiscrimination loss.
-    """
-    intermidiate_model = feature_extractor(d)
-    y_true = intermidiate_model(y_true)
-    y_pred = intermidiate_model(y_pred)
-    return K.sum(K.abs(y_true - y_pred))
+#     Returns:
+#         y_true, y_predのDiscrimination loss.
+#     """
+#     intermidiate_model = feature_extractor(d)
+#     y_true = intermidiate_model(y_true)
+#     y_pred = intermidiate_model(y_pred)
+#     return K.sum(K.abs(y_true - y_pred))
 
 
 def sum_of_residual(y_true, y_pred):
@@ -109,12 +108,18 @@ class ACAnoGAN:
         acanogan_input_data = Input(shape=(input_dim,)) 
         g_input_data = Dense(
             input_dim,
-            activation='tanh',
+            activation='sigmoid',
             trainable=True)(acanogan_input_data)
         label = Input(shape=[1, ], dtype="int32")
+
+        intermidiate_model = feature_extractor(self.discriminator)
+        intermidiate_model.trainable = False
+
         g_out = self.generator([g_input_data, label])
-        self.model = Model(inputs=[acanogan_input_data, label], outputs=g_out)
-        self.model_weight = None
+        d_out = intermidiate_model(g_out)
+
+        self.model = Model(inputs=[acanogan_input_data, label], outputs=[g_out, d_out])
+
 
     def compile(self, optimizer):
         """
@@ -124,8 +129,7 @@ class ACAnoGAN:
             optimizer:使用するoptimizer
 
         """
-        print(self.loss)
-        self.model.compile(loss=self.loss, optimizer=optimizer)
+        self.model.compile(loss=sum_of_residual, loss_weights= [1-self.w, self.w], optimizer=optimizer)
         K.set_learning_phase(0)
 
     def compute_anomaly_score(
@@ -148,23 +152,27 @@ class ACAnoGAN:
         # z = Input((100,), name="Z")
         # learning for changing latent
         self.z = np.random.randn(1, self.input_dim)
-        loss = self.model.fit([self.z, label], x, batch_size=1,
+
+        intermidiate_model = feature_extractor(self.discriminator)
+        d_x = intermidiate_model.predict(x)
+
+        loss = self.model.fit([self.z, label], [x, d_x], batch_size=1,
                               epochs=iterations, verbose=0)
         loss = loss.history['loss'][-1]
-        generated_data = self.model.predict([self.z, label])
+        generated_data, _ = self.model.predict([self.z, label])
 
         return loss, generated_data
 
-    def loss(self, y_true, y_pred):
-        """
-        Loss function．
+    # def loss(self, y_true, y_pred):
+    #     """
+    #     Loss function．
 
-        Args:
-            y_true:正解値
-            y_pred:予測値
+    #     Args:
+    #         y_true:正解値
+    #         y_pred:予測値
 
-        Returns:
-            y_true，y_predのLoss．
-        """
-        return ((1 - self.w) * sum_of_residual(y_true, y_pred)) + \
-            (self.w * sum_of_discrimination(y_true, y_pred, self.discriminator))
+    #     Returns:
+    #         y_true，y_predのLoss．
+    #     """
+    #     return ((1 - self.w) * sum_of_residual(y_true, y_pred)) + \
+    #         (self.w * sum_of_discrimination(y_true, y_pred, self.discriminator))
