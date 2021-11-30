@@ -55,7 +55,7 @@ def normalize(df: pd.DataFrame) -> pd.DataFrame:
     return (df - minimum) / (maximum - minimum)
 
 
-def gmm_clustering(df: pd.DataFrame, n_clusters: int = 2) -> pd.DataFrame:
+def gmm_clustering(df: pd.DataFrame, n_clusters: int = 2, seed: int = 0) -> pd.DataFrame:
     """
     GMMによるクラスタリングを行い各クラスタへの所属確率を返す．
 
@@ -65,7 +65,7 @@ def gmm_clustering(df: pd.DataFrame, n_clusters: int = 2) -> pd.DataFrame:
     Returns:
         pandas DataFrame:各クラスタへの所属確率
     """
-    gmm = GaussianMixture(n_components=n_clusters, max_iter=20, random_state=3)
+    gmm = GaussianMixture(n_components=n_clusters, max_iter=20, random_state=seed)
     gmm.fit(df)
     prob = gmm.predict_proba(df)
     columns = [str(i) for i in range(0, len(prob[0]))]
@@ -99,7 +99,7 @@ def grouping_class(label: dict, prob: pd.DataFrame) -> pd.DataFrame:
     return class_label_df
 
 
-def make_best_class_label(input: str, save: str, combination_save: str, no_gmm: bool):
+def make_best_class_label(input: str, save: str, combination_save: str, no_gmm: bool, seed: int = 0):
     """
     最適なクラスの組み合わせを探索して，それをクラスラベルとして保存する．
     また，いずれのクラスタ数においても，クラスが属していないクラスタが存在している場合は，適切な組み合わせなしとする．
@@ -124,7 +124,7 @@ def make_best_class_label(input: str, save: str, combination_save: str, no_gmm: 
 
     if no_gmm:
         for c in range(3, 8):
-            prob_df = gmm_clustering(input, n_clusters=c)
+            prob_df = gmm_clustering(input, n_clusters=c, seed=seed)
             best_class_label = grouping_class(label, prob_df)
             print(c)
             if len(best_class_label.columns) == 3:
@@ -132,7 +132,7 @@ def make_best_class_label(input: str, save: str, combination_save: str, no_gmm: 
     else:
         for c in range(2, 8):
             # Clustering
-            prob_df = gmm_clustering(input, n_clusters=c)
+            prob_df = gmm_clustering(input, n_clusters=c, seed=seed)
 
             # # Grouping to the highest probability cluster.
             class_label = grouping_class(label, prob_df)
@@ -226,6 +226,12 @@ def arg_parse():
         type=str,
         help='save combination json path')
     parser.add_argument(
+        '--seed',
+        '-sd',
+        default=0,
+        type=int,
+        help='random_seed')
+    parser.add_argument(
         "-ng",
         "--no_gmm",
         action='store_true',
@@ -236,7 +242,7 @@ def arg_parse():
 
 def main():
     args = arg_parse()
-    make_best_class_label(args.input, args.save, args.combination_save, args.no_gmm)
+    make_best_class_label(args.input, args.save, args.combination_save, args.no_gmm, args.seed)
 
 
 if __name__ == '__main__':

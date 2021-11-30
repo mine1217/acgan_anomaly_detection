@@ -151,6 +151,7 @@ def main():
     num_classes = int(max(combination)) + 1
     if args.is_anomaly_test:
         class_labels = random_class_label(class_labels)
+    print(class_labels)
 
     # AC-Gan model load
     acgan_obj = acgan.ACGAN(

@@ -8,6 +8,19 @@ from matplotlib import pyplot as plt
 from sklearn import datasets
 import umap.umap_ as umap
 
+def normalize(x: np.array) -> tuple:
+    """
+    Min max normalize．
+
+    Args:
+        x:input data
+    Returns:
+        x_train, minimum, maximum
+    """
+    minimum = x.min(axis=None)
+    maximum = x.max(axis=None)
+    return (x - minimum) / (maximum - minimum), (minimum, maximum)
+
 
 def main():
     args = arg_parse()
@@ -29,6 +42,12 @@ def main():
     #データセットを読み込む
     dataset = datasets.load_digits()
     X, y = input.values, class_labels
+
+    #もし正規化するなら
+    if args.normalize:
+        X, (minimum, maximum) = normalize(X)
+
+    print(X)
 
     A=0
     B=0
@@ -96,10 +115,16 @@ def arg_parse():
         action='store_true',
         help="Plot day label")
     parser.add_argument(
+        "-n",
+        "--normalize",
+        action='store_true',
+        help="Plot day label")
+    parser.add_argument(
         "-w",
         "--weekday_label",
         action='store_false',
         help="class or day of week")
+    
     args = parser.parse_args()
     return args
 

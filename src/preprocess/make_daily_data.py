@@ -64,7 +64,7 @@ def complementMissingValues(dataList):
 def load_target(input_dir, train):
     if train:
         targetFileList = sorted(glob(input_dir + "log*.csv")
-                                )[-730:-1][::-1]  # 最新2年分のデータ
+                                )[-1200:-1][::-1]  # 最新2年分のデータ
         save_dir = "./data/elect_data/train/"
     else:
         targetFileList = sorted(glob(input_dir + "log*.csv")
@@ -92,11 +92,14 @@ def main():
 
     devices = [i.split(",")[1] for i in co(
         ["cat", targetFileList[0]]).split("\n") if i != ""]
+    print(devices)
     deviceList = Counter(devices).keys()
+    print(Counter(devices))
 
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
     for i in deviceList:  # i:現在のデバイス
+        print(i)
         data = ""  # デバイス一つのデータ
         data_count = 0  # あるデバイスのデータの数
         for j in targetFileList:  # j:一日のデータ

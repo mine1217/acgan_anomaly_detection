@@ -50,17 +50,19 @@ def cutoff(roc_dataset, fprs, tprs, thresholds, n_avg, a_avg):
     # precision=tp/(tp+fp)
     precision = metrics.precision_score(roc_dataset["y"], pred_label)
     recall = metrics.recall_score(roc_dataset["y"], pred_label)
+    acuarry = metrics.accuracy_score(roc_dataset["y"], pred_label)
     specificity = tn / (tn + fp)
     f1_score = metrics.f1_score(roc_dataset["y"], pred_label)
     auc = metrics.auc(fprs, tprs)
 
-    cutoff_result = {"fpr": fprs[cutoff_index],
-                     "tpr": tprs[cutoff_index],
-                     "precision": precision,
+    cutoff_result = {"precision": precision,
                      "recall": recall,
-                     "specificity": specificity,
                      "f1_score": f1_score,
+                     "acuarry": acuarry,
                      "auc": auc,
+                     "fpr": fprs[cutoff_index],
+                     "tpr": tprs[cutoff_index],
+                     "specificity": specificity,
                      "nomal_score_avg": n_avg,
                      "anomaly_score_avg": a_avg,}
     return cutoff_result
@@ -107,8 +109,11 @@ def make_detect_accuracy(normal_file, anomaly_file, plot_save, accuracy_save):
                                 header=None,
                                 names=["score"])
     dataset = make_roc_dataset(normal_score, anomaly_score)
+    print(dataset.y.to_list())
+    print(dataset.score.to_list())
     fprs, tprs, thres = metrics.roc_curve(
         dataset.y.to_list(), dataset.score.to_list())
+
 
     roc_curve_data = {"fprs": fprs, "tprs": tprs, "thres": thres}
     n_avg = np.average(normal_score.values)
