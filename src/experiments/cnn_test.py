@@ -79,7 +79,7 @@ def arg_parse():
         "-w",
         "--w",
         type=float,
-        default=0.1,
+        default=0.5,
         help="parameter")
     parser.add_argument(
         "-as",

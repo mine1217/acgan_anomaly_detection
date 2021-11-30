@@ -103,7 +103,6 @@ class ACAnoGAN:
         self.w = w
         # self.z = np.random.randn(1, self.input_dim)
         self.z = None
-
         self.generator.trainable = False
         # Input layer cann't be trained. Add new layer as same size & same
         # distribution
@@ -125,6 +124,7 @@ class ACAnoGAN:
             optimizer:使用するoptimizer
 
         """
+        print(self.loss)
         self.model.compile(loss=self.loss, optimizer=optimizer)
         K.set_learning_phase(0)
 

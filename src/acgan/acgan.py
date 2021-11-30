@@ -52,7 +52,7 @@ class ACGAN:
             num_classes: int,
             minimum: int,
             maximum: int,
-            w: float = 0.5,
+            w: float = 0.1,
             model_save: str = "models/acgan/5032AB/",
             is_progress_save: bool = False,
             model_progress_save: str = "models/acgan/progress/5032AB/",
@@ -66,11 +66,10 @@ class ACGAN:
         self.model_save = model_save
         self.is_progress_save = is_progress_save
         self.model_progress_save = model_progress_save
-
         self.width = 120
         self.channel = 1
         self.z_size = 100
-        self.optimizer = Adam()
+        self.optimizer = Adam(0.0002, 0.5)
         self.losses = [
             'binary_crossentropy',
             'sparse_categorical_crossentropy']
@@ -305,7 +304,6 @@ class ACGAN:
         plt.xlabel('iteration')
         plt.ylabel('loss') 
         plt.legend()
-        plt.ylim([0.6,0.8])
 
         args = arg_parse()
 

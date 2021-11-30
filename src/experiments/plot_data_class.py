@@ -72,47 +72,46 @@ def encode_day_to_label(df: pd.DataFrame) -> dict:
     label = [7 if holiday_label[i] else label[i] for i in range(len(label))]
     return dict(zip(index_list, label))
 
-combination = json.load(open(args.combination))
-combination = list(combination.values())
-input = pd.read_csv(args.input, header=None, index_col=0)
-day_to_label = encode_day_to_label(input).values()
-num_classes = int(max(combination)) + 1
-
-input_for_class = np.empty((num_classes,))
-
-for n in range(num_classes):
-    input_for_class[n] = input_data[day_to_label==n]
-
-
-
 def mkdir(dir):
     dir_path = os.path.dirname(dir)
     if not os.path.exists(dir_path):
         os.makedirs(dir_path)
 
+combination = json.load(open(args.combination))
+combination = list(combination.values())
+input = pd.read_csv(args.input, header=None, index_col=0)
+day_to_label = encode_day_to_label(input).values()
+class_labels = [combination[i] for i in day_to_label]
+num_classes = int(max(combination)) + 1
 
-x = np.linspace(0, 24, 120)  # x軸データ(0,1,2...,24)
-axes = []  # 各データのグラフ
-mkdir(args.save)
-plt.xlabel("Hour")
-plt.ylabel("Power")
-# plt.xticks(x, [0,6,12,18,24])
-plt.yticks(color="None")
-for i, data in enumerate(input_data):
-    plt.rcParams["font.size"] = 25
-    fig = plt.figure(figsize=(8, 8))  # figureオブジェクト作成
-    plt.title(days[i])
-    # plt.yticks(color="None")
-    plt.tick_params(length=0)
-    y = data  # y軸データ
+x = input.values
+print(class_labels)
+
+for n in range(num_classes):
+    data = x[class_labels==n]
+    print(data)
+    x = np.linspace(0, 24, 120)  # x軸データ(0,1,2...,24)
+    axes = []  # 各データのグラフ
+    mkdir(args.save + "class" + str(n) + "/")
     plt.xlabel("Hour")
     plt.ylabel("Power")
-    plt.xticks([0, 6, 12, 18, 24])
-    plt.xlim([0, 24])
-    plt.ylim([0, ylim])
-    # print("test")
-    plt.tight_layout()
-    plt.plot(x, y, "-o", lw=7)  # 波形グラフ作成，線の太さ変更
-    # plt.plot(x, y)  # グラフ作成
-    plt.savefig(args.save + days[i] + ".png")  # 保存
-    plt.close()
+    # plt.xticks(x, [0,6,12,18,24])
+    plt.yticks(color="None")
+    for i, data in enumerate(data):
+        plt.rcParams["font.size"] = 25
+        fig = plt.figure(figsize=(8, 8))  # figureオブジェクト作成
+        plt.title(days[i])
+        # plt.yticks(color="None")
+        plt.tick_params(length=0)
+        y = data  # y軸データ
+        plt.xlabel("Hour")
+        plt.ylabel("Power")
+        plt.xticks([0, 6, 12, 18, 24])
+        plt.xlim([0, 24])
+        plt.ylim([0, ylim])
+        # print("test")
+        plt.tight_layout()
+        plt.plot(x, y, "-o", lw=7)  # 波形グラフ作成，線の太さ変更
+        # plt.plot(x, y)  # グラフ作成
+        plt.savefig(args.save+ "class" + str(n) + days[i] + ".png")  # 保存
+        plt.close()
