@@ -52,7 +52,7 @@ class ACGAN:
             num_classes: int,
             minimum: int,
             maximum: int,
-            w: float = 0.1,
+            w: float = 0.2,
             model_save: str = "models/acgan/5032AB/",
             is_progress_save: bool = False,
             model_progress_save: str = "models/acgan/progress/5032AB/",

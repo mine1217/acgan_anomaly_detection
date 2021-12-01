@@ -82,13 +82,13 @@ def arg_parse():
         "-it",
         "--iterations",
         type=int,
-        default=1000,
+        default=100,
         help="parameter")
     parser.add_argument(
         "-w",
         "--w",
         type=float,
-        default=0.1,
+        default=0.5,
         help="parameter")
     parser.add_argument(
         "--is_anomaly_test",
