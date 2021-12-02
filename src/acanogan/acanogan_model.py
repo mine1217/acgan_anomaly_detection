@@ -25,8 +25,7 @@ K.set_session(sess)
 
 
 from keras.models import Model
-from keras.layers import Input, Dense
-from keras.layers import LeakyReLU, ReLU
+from keras.layers import *
 import keras.backend as K
 from src.acgan import mish_keras
 
@@ -44,7 +43,10 @@ def feature_extractor(d: Model, layer_name="d_conv2") -> Model:
     intermidiate_model = Model(
         inputs=d.layers[0].input,
         outputs=d.get_layer(layer_name).output)
-    intermidiate_model.compile(loss='binary_crossentropy', optimizer='adam')
+    intermidiate_model.compile(
+        # loss='sparse_categorical_crossentropy', 
+        loss='binary_crossentropy', 
+        optimizer='adam')
     # intermidiate_model.summary()
     return intermidiate_model
 
@@ -110,10 +112,11 @@ class ACAnoGAN:
         acanogan_input_data = Input(shape=(input_dim,)) 
         g_input_data = Dense(
             input_dim,
-            # activation='relu',
+            # activation='tanh',
             trainable=True)(acanogan_input_data)
         #g_input_data = mish_keras.Mish()(g_input_data)
-        g_input_data = LeakyReLU(0.5)(g_input_data)
+        # g_input_data = LeakyReLU(0.5)(g_input_data)
+        g_input_data = BatchNormalization()(g_input_data)
         label = Input(shape=[1, ], dtype="int32")
 
         intermidiate_model = feature_extractor(self.discriminator)
