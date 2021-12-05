@@ -436,7 +436,7 @@ def main():
             y_train.max()) + 1,
         minimum=minimum,
         maximum=maximum,
-        w=0.1,
+        w=0.5,
         model_save=args.model_save,
         is_progress_save=args.is_progress_save,
         model_progress_save=args.model_progress_save)
