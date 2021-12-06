@@ -52,7 +52,7 @@ class ACGAN:
             num_classes: int,
             minimum: int,
             maximum: int,
-            w: float = 0.1,
+            w: float = 0.9,
             model_save: str = "models/acgan/5032AB/",
             is_progress_save: bool = False,
             model_progress_save: str = "models/acgan/progress/5032AB/",
@@ -69,7 +69,7 @@ class ACGAN:
         self.width = 120
         self.channel = 1
         self.z_size = 100
-        self.optimizer = Adam(0.0002, 0.5)
+        self.optimizer = Adam()
         self.losses = [
             'binary_crossentropy',
             'sparse_categorical_crossentropy']
@@ -188,9 +188,16 @@ class ACGAN:
         validity = Dense(1, activation="sigmoid", name="validity")(features)
         # auxiliary classifier
         classifier = Dense(
+            units=64*self.num_classes,
+            # activation = "relu",
+            name="classifier_dense"
+        )(features)
+        classifier = mish_keras.Mish()(classifier)
+        classifier = BatchNormalization()(classifier)
+        classifier = Dense(
             self.num_classes,
             activation="softmax",
-            name="classifier")(features)
+            name="classifier")(classifier)
         return Model([input], [validity, classifier], name="discriminator")
 
     def save_model_progress(self, iteration: int):
@@ -270,6 +277,7 @@ class ACGAN:
                 gen_data, [fake, fake_labels])
             d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
 
+
             # ---------------------
             #  Train Generator
             # ---------------------
@@ -278,14 +286,14 @@ class ACGAN:
                 [z, fake_labels], [valid, fake_labels])
 
             # 折れ線用loss
-            plt_loss[0].append(d_loss[0]) 
-            plt_loss[1].append(g_loss[0]) 
+            plt_loss[0].append(d_loss[1]) 
+            plt_loss[1].append(d_loss[2]) 
 
             # If at save interval => save generated samples,model
             if iteration % interval == 0:
                 print(
-                    "%d [D loss: %f] [G loss: %f]" %
-                    (iteration, d_loss[0], g_loss[0]))
+                    "%d [D loss: %f] [DV loss: %f] [DC loss: %f] [G loss: %f]" %
+                    (iteration, d_loss[0], d_loss[1], d_loss[2], g_loss[0]))
                 if self.is_progress_save:
                     self.save_model_progress(iteration)
         # ---------------------
@@ -299,10 +307,11 @@ class ACGAN:
 
         plt.figure(dpi=500)
 
-        plt.plot(range(0, iterations), plt_loss[0][:iterations], linewidth=1, label="d_loss", color="red")
-        plt.plot(range(0, iterations), plt_loss[1][:iterations], linewidth=1, label="g_loss", color="blue")
+        plt.plot(range(0, iterations), plt_loss[0][:iterations], linewidth=1, label="dv_loss", color="red")
+        plt.plot(range(0, iterations), plt_loss[1][:iterations], linewidth=1, label="dc_loss", color="blue")
         plt.xlabel('iteration')
         plt.ylabel('loss') 
+        plt.ylim([0, 1.0])
         plt.legend()
 
         args = arg_parse()

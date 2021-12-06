@@ -151,8 +151,6 @@ class cnnClassfier:
 
             # Train the classfier
             loss = self.classfier.train_on_batch(real_data, real_labels)
-            print(loss)
-
 
             # 折れ線用loss
             plt_loss.append(loss[0]) 
