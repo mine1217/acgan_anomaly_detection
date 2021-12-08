@@ -87,8 +87,12 @@ class CGAN:
         self.width = 120
         self.channel = 1
         self.z_size = 100
-        self.Goptimizer = Adam(0.0002, 0.5)
-        self.Doptimizer = Adam(0.0002, 0.5)
+        self.Goptimizer = Adam(
+            0.002, 0.9
+            )
+        self.Doptimizer = Adam(
+            0.0002, 0.4
+            )
         self.start_filters = 512
         self.hidden_dim = 32
         self.batch_size = batch_size
@@ -110,7 +114,7 @@ class CGAN:
         # and generates the corresponding digit of that label
         self.set_trainable(self.generator, trainable=False)
         x = Input(shape=(self.width, self.channel))
-        z = Input(shape=(self.width, self.z_size))
+        z = Input(shape=(self.z_size,))
         label = Input(shape=[1,], dtype='int32')
         fake = self.generator([z, label])
 
@@ -187,7 +191,7 @@ class CGAN:
             self.num_classes,
             self.z_size)(label))
         model_input = multiply([z, label_embedding])
-        start_filters = 256
+        start_filters = 512
         # 2Upsampling adjust
         in_w = int(self.width / 4)
         x = Dense(
@@ -201,7 +205,7 @@ class CGAN:
             (in_w, start_filters), input_shape=(
                 in_w * start_filters,))(x)
         x = UpSampling1D(size=2)(x)
-        x = Conv1D(filters=64, kernel_size=5, padding="same",
+        x = Conv1D(filters=int(start_filters/2), kernel_size=5, padding="same",
                    # activation="tanh",
                    name="g_conv1")(x)
         x = mish_keras.Mish()(x)
@@ -333,7 +337,7 @@ class CGAN:
             # Sample noise as generator input
             # z = np.random.uniform(-1, 1, size=(batch_size, self.z_size))
             # z = np.random.randn(batch_size, self.z_size)
-            z = np.random.normal(0, 1, (self.batch_size, self.width, self.z_size))
+            z = np.random.normal(0, 1, (self.batch_size, self.z_size))
             # z = np.random.normal(0, 1, (batch_size, self.z_size))
 
             # The labels of the digits that the generator tries to create an
@@ -378,10 +382,10 @@ class CGAN:
                 print(
                     "%d [D loss: %f] [G loss: %f]" %
                     (iteration, d_loss, g_loss))
-                if (g_loss < 0.54) and (d_loss < 1.1):
-                    print("train break")
-                    iterations = iteration
-                    break
+                # if (g_loss < 0.6) and (d_loss < 0.6):
+                #     print("train break")
+                #     iterations = iteration
+                #     break
 
                 # if self.is_progress_save:
                 #     self.save_model_progress(iteration)
@@ -540,7 +544,7 @@ def main():
         # is_progress_save=args.is_progress_save,
         # model_progress_save=args.model_progress_save
     )
-    cgan.train(x_train, y_train, iterations=2000, batch_size=32,
+    cgan.train(x_train, y_train, iterations=5000, batch_size=32,
                 interval=100)
 
 if __name__ == "__main__":

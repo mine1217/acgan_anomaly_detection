@@ -69,7 +69,7 @@ class ACGAN:
         self.width = 120
         self.channel = 1
         self.z_size = 100
-        self.optimizer = Adam()
+        self.optimizer = Adam(0.0002, 0.5)
         self.losses = [
             'binary_crossentropy',
             'sparse_categorical_crossentropy']
@@ -185,11 +185,18 @@ class ACGAN:
         features = BatchNormalization()(x)
 
         # real or face
-        validity = Dense(1, activation="sigmoid", name="validity")(features)
+        validity = Dense(
+            units=128,
+            # activation = "sigmoid",
+            name="validity_dense"
+        )(features)
+        validity = mish_keras.Mish()(validity)
+        validity = BatchNormalization()(validity)
+        validity = Dense(1, activation="sigmoid", name="validity")(validity)
         # auxiliary classifier
         classifier = Dense(
             units=64*self.num_classes,
-            # activation = "relu",
+            # activation = "sigmoid",
             name="classifier_dense"
         )(features)
         classifier = mish_keras.Mish()(classifier)
@@ -292,8 +299,8 @@ class ACGAN:
             # If at save interval => save generated samples,model
             if iteration % interval == 0:
                 print(
-                    "%d [D loss: %f] [DV loss: %f] [DC loss: %f] [G loss: %f]" %
-                    (iteration, d_loss[0], d_loss[1], d_loss[2], g_loss[0]))
+                    "%d [D loss: %f] [DV loss: %f] [DC loss: %f] [DR loss: %f] [DF loss: %f] [G loss: %f]" %
+                    (iteration, d_loss[0], d_loss[1], d_loss[2], d_loss_real[0], d_loss_fake[0], g_loss[0]))
                 if self.is_progress_save:
                     self.save_model_progress(iteration)
         # ---------------------
