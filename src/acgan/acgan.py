@@ -456,7 +456,7 @@ def main():
         model_save=args.model_save,
         is_progress_save=args.is_progress_save,
         model_progress_save=args.model_progress_save)
-    acgan.train(x_train, y_train, iterations=2000, batch_size=32,
+    acgan.train(x_train, y_train, iterations=5000, batch_size=32,
                 interval=100)
 
 

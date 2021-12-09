@@ -45,8 +45,8 @@ def feature_extractor(d: Model, layer_name="d_conv1") -> Model:
         outputs=d.get_layer(layer_name).output)
     intermidiate_model.compile(
         # loss='categorical_crossentropy', 
-        # loss='binary_crossentropy', 
-        loss='mean_squared_error',
+        loss='binary_crossentropy', 
+        # loss='mean_squared_error',
         optimizer='adam')
     # intermidiate_model.summary()
     return intermidiate_model

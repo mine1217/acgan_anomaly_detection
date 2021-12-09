@@ -88,10 +88,10 @@ class CGAN:
         self.channel = 1
         self.z_size = 100
         self.Goptimizer = Adam(
-            0.002, 0.9
+            0.0002, 0.6
             )
         self.Doptimizer = Adam(
-            0.0002, 0.4
+            0.0002, 0.6
             )
         self.start_filters = 512
         self.hidden_dim = 32
@@ -169,7 +169,7 @@ class CGAN:
                                                        d_logit_fake),
                                                    from_logits=True))
 
-        d_loss = d_loss_real + d_loss_fake
+        d_loss = 0.5*(d_loss_real + d_loss_fake)
 
         g_loss = K.mean(K.binary_crossentropy(output=d_logit_fake,
                                               target=K.ones_like(d_logit_fake),
@@ -190,14 +190,14 @@ class CGAN:
         label_embedding = Flatten()(Embedding(
             self.num_classes,
             self.z_size)(label))
-        model_input = multiply([z, label_embedding])
-        start_filters = 512
+        model_input = Concatenate()([z, label_embedding])
+        start_filters = 256
         # 2Upsampling adjust
         in_w = int(self.width / 4)
         x = Dense(
             in_w *
             start_filters,
-            # activation="tanh",
+            # activation="relu",
             name="g_dense1")(model_input)
         x = mish_keras.Mish()(x)
         x = BatchNormalization()(x)
@@ -206,8 +206,13 @@ class CGAN:
                 in_w * start_filters,))(x)
         x = UpSampling1D(size=2)(x)
         x = Conv1D(filters=int(start_filters/2), kernel_size=5, padding="same",
-                   # activation="tanh",
+                #    activation="relu",
                    name="g_conv1")(x)
+        x = mish_keras.Mish()(x)
+        x = BatchNormalization()(x)
+        x = Conv1D(filters=int(start_filters/4), kernel_size=10, padding="same",
+            # activation="relu",
+            name="g_conv1.5")(x)
         x = mish_keras.Mish()(x)
         x = BatchNormalization()(x)
         x = UpSampling1D(size=2)(x)
@@ -247,7 +252,7 @@ class CGAN:
             100)(label))
         label_embedding = RepeatVector(self.width)(label_embedding)
 
-        inputs = multiply([conv, label_embedding])
+        inputs = Concatenate()([conv, label_embedding])
 
         x = Conv1D(
             filters=64,
@@ -257,15 +262,27 @@ class CGAN:
             # activation="relu",
             name="d_conv1")(inputs)
         x = mish_keras.Mish()(x)
-        x = BatchNormalization()(x)
+        x = (Dropout(0.25))(x)
+        # x = BatchNormalization()(x)
         x = Conv1D(
             filters=128,
-            kernel_size=5,
+            kernel_size=10,
             strides=2,
+            padding="same",
+            # activation="relu",
+            name="d_conv1.5")(x)
+        x = mish_keras.Mish()(x)
+        x = (Dropout(0.25))(x)
+        x = BatchNormalization()(x)
+        x = Conv1D(
+            filters=256,
+            kernel_size=5,
+            strides=1,
             padding="same",
             # activation="relu",
             name="d_conv2")(x)
         x = mish_keras.Mish()(x)
+        x = (Dropout(0.25))(x)
         x = BatchNormalization()(x)
         x = Flatten()(x)
         x = Dense(units=1024,
@@ -336,8 +353,8 @@ class CGAN:
 
             # Sample noise as generator input
             # z = np.random.uniform(-1, 1, size=(batch_size, self.z_size))
-            # z = np.random.randn(batch_size, self.z_size)
-            z = np.random.normal(0, 1, (self.batch_size, self.z_size))
+            z = np.random.randn(batch_size, self.z_size)
+            # z = np.random.normal(0, 1, (self.batch_size, self.z_size))
             # z = np.random.normal(0, 1, (batch_size, self.z_size))
 
             # The labels of the digits that the generator tries to create an
@@ -544,7 +561,7 @@ def main():
         # is_progress_save=args.is_progress_save,
         # model_progress_save=args.model_progress_save
     )
-    cgan.train(x_train, y_train, iterations=5000, batch_size=32,
+    cgan.train(x_train, y_train, iterations=4000, batch_size=32,
                 interval=100)
 
 if __name__ == "__main__":
