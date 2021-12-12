@@ -15,7 +15,7 @@ import pandas as pd
 import datetime
 
 
-def train_test_split(input, split_date, train_save, test_save):
+def train_test_split(input, split_date, train_save, test_save, ):
     """
     train_test_split
 
@@ -25,19 +25,31 @@ def train_test_split(input, split_date, train_save, test_save):
     os.makedirs(os.path.dirname(train_save), exist_ok=True)
     os.makedirs(os.path.dirname(test_save), exist_ok=True)
     # split_date = date[2:]
-    split_date = datetime.datetime.strptime(
-        split_date,
-        "%Y.%m.%d")
     dates = [
         datetime.datetime.strptime(
             f"20{d}",
             "%Y.%m.%d") for d in input.index.to_list()]
-    train_dates = [d.strftime("%Y.%m.%d")[2:] for d in dates if split_date > d]
-    test_dates = [d.strftime("%Y.%m.%d")[2:] for d in dates if split_date <= d]
+
+    if split_date is None:
+        train_dates = [d.strftime("%Y.%m.%d")[2:] for d in dates if not serial(d)%3 == 0]
+        test_dates = [d.strftime("%Y.%m.%d")[2:] for d in dates if serial(d)%3 == 0]
+    else:
+        split_date = datetime.datetime.strptime(
+            split_date,
+            "%Y.%m.%d")
+        train_dates = [d.strftime("%Y.%m.%d")[2:] for d in dates if split_date > d]
+        test_dates = [d.strftime("%Y.%m.%d")[2:] for d in dates if split_date <= d]
+    
     train = input.loc[train_dates]
     test = input.loc[test_dates]
     train.to_csv(train_save, header=False)
     test.to_csv(test_save, header=False)
+
+def serial(s):
+    end = s
+    start = datetime.datetime(1899, 12, 31)
+    delta = end - start
+    return delta.days
 
 
 def arg_parse():
@@ -52,7 +64,7 @@ def arg_parse():
     parser.add_argument(
         '--date',
         '-d',
-        default="2020.01.01",
+        default=None,
         type=str,
         help='split date')
     parser.add_argument(

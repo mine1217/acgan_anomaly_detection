@@ -7,6 +7,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 from sklearn import datasets
 import umap.umap_ as umap
+from matplotlib.colors import LogNorm
+import matplotlib.colors as colors
+import matplotlib.cm as cm
 
 def normalize(x: np.array) -> tuple:
     """
@@ -71,21 +74,30 @@ def main():
     #結果を二次元でプロットする
     embedding_x = embedding[:, 0]
     embedding_y = embedding[:, 1]
-    for n in np.unique(y):
-        plt.scatter(embedding_x[y == n],
-                    embedding_y[y == n],
-                    label=n)
-    
     if args.day_label:
-        day_labels = input.index.to_list()
+        usercmap = plt.get_cmap('jet')
+        cNorm  = colors.Normalize(vmin=0, vmax=embedding_x.size)
+        scalarMap = cm.ScalarMappable(norm=cNorm, cmap=usercmap)
+        for i, x in enumerate(embedding_x):
+            c = scalarMap.to_rgba(i)
+            plt.scatter(x,embedding_y[i],color=c)
+    else:
+        for n in np.unique(y):
+            plt.scatter(embedding_x[y == n],
+                        embedding_y[y == n],
+                        label=n)
+    
+    # if args.day_label:
+    #     day_labels = input.index.to_list()
 
-        for i, d in enumerate(day_labels):
-            plt.annotate(d, (embedding_x[i],embedding_y[i]), fontsize=4)
+    #     for i, d in enumerate(day_labels):
+    #         plt.annotate(d, (embedding_x[i],embedding_y[i]), fontsize=4)
         
 
     #グラフを表示する
     plt.grid()
-    plt.legend()
+    if not (args.day_label):
+        plt.legend()
     #plt.show()
     plt.savefig(args.save)
     print(args.save)

@@ -254,8 +254,9 @@ class CGAN:
 
         inputs = Concatenate()([conv, label_embedding])
 
+        start_filters=64
         x = Conv1D(
-            filters=64,
+            filters=start_filters,
             kernel_size=15,
             strides=2,
             padding="same",
@@ -265,7 +266,7 @@ class CGAN:
         x = (Dropout(0.25))(x)
         # x = BatchNormalization()(x)
         x = Conv1D(
-            filters=128,
+            filters=start_filters*2,
             kernel_size=10,
             strides=2,
             padding="same",
@@ -275,7 +276,7 @@ class CGAN:
         x = (Dropout(0.25))(x)
         x = BatchNormalization()(x)
         x = Conv1D(
-            filters=256,
+            filters=start_filters*4,
             kernel_size=5,
             strides=1,
             padding="same",
@@ -421,6 +422,7 @@ class CGAN:
         plt.plot(range(0, iterations), plt_loss[1][:iterations], linewidth=1, label="g_loss", color="blue")
         plt.xlabel('iteration')
         plt.ylabel('loss') 
+        plt.ylim([0.3, 1.0])
         plt.legend()
         #plt.ylim([0.6,0.8])
 

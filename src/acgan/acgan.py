@@ -117,14 +117,14 @@ class ACGAN:
         label_embedding = Flatten()(Embedding(
             self.num_classes,
             self.z_size)(label))
-        model_input = multiply([z, label_embedding])
+        model_input = Concatenate()([z, label_embedding])
         start_filters = 256
         # 2Upsampling adjust
         in_w = int(self.width / 4)
         x = Dense(
             in_w *
             start_filters,
-            # activation="tanh",
+            # activation="relu",
             name="g_dense1")(model_input)
         x = mish_keras.Mish()(x)
         x = BatchNormalization()(x)
@@ -132,9 +132,20 @@ class ACGAN:
             (in_w, start_filters), input_shape=(
                 in_w * start_filters,))(x)
         x = UpSampling1D(size=2)(x)
-        x = Conv1D(filters=64, kernel_size=5, padding="same",
-                   # activation="tanh",
-                   name="g_conv1")(x)
+        x = Conv1D(
+            filters=int(start_filters/2), 
+            kernel_size=5, 
+            padding="same",
+            #activation="relu",
+            name="g_conv1")(x)
+        x = mish_keras.Mish()(x)
+        x = BatchNormalization()(x)
+        x = Conv1D(
+            filters=int(start_filters/4), 
+            kernel_size=10,
+            padding="same",
+            # activation="relu",
+            name="g_conv1.5")(x)
         x = mish_keras.Mish()(x)
         x = BatchNormalization()(x)
         x = UpSampling1D(size=2)(x)
@@ -159,23 +170,36 @@ class ACGAN:
             keras Model:Discriminator
         """
         input = Input(shape=(self.width, self.channel))
+        start_filters = 64
         x = Conv1D(
-            filters=64,
+            filters=start_filters,
             kernel_size=15,
             strides=2,
             padding="same",
             # activation="relu",
             name="d_conv1")(input)
         x = mish_keras.Mish()(x)
+        x = (Dropout(0.25))(x)
+        # x = BatchNormalization()(x)
+        x = Conv1D(
+            filters=start_filters*2,
+            kernel_size=10,
+            strides=2,
+            padding="same",
+            # activation="relu",
+            name="d_conv1.5")(x)
+        x = mish_keras.Mish()(x)
+        x = (Dropout(0.25))(x)
         x = BatchNormalization()(x)
         x = Conv1D(
-            filters=128,
+            filters=start_filters*4,
             kernel_size=5,
-            strides=2,
+            strides=1,
             padding="same",
             # activation="relu",
             name="d_conv2")(x)
         x = mish_keras.Mish()(x)
+        x = (Dropout(0.25))(x)
         x = BatchNormalization()(x)
         x = Flatten()(x)
         x = Dense(units=1024,
@@ -293,8 +317,8 @@ class ACGAN:
                 [z, fake_labels], [valid, fake_labels])
 
             # 折れ線用loss
-            plt_loss[0].append(d_loss[1]) 
-            plt_loss[1].append(d_loss[2]) 
+            plt_loss[0].append(g_loss[1]) 
+            plt_loss[1].append(d_loss[1]) 
 
             # If at save interval => save generated samples,model
             if iteration % interval == 0:
@@ -314,8 +338,8 @@ class ACGAN:
 
         plt.figure(dpi=500)
 
-        plt.plot(range(0, iterations), plt_loss[0][:iterations], linewidth=1, label="dv_loss", color="red")
-        plt.plot(range(0, iterations), plt_loss[1][:iterations], linewidth=1, label="dc_loss", color="blue")
+        plt.plot(range(0, iterations), plt_loss[0][:iterations], linewidth=1, label="g_loss", color="red")
+        plt.plot(range(0, iterations), plt_loss[1][:iterations], linewidth=1, label="d_loss", color="blue")
         plt.xlabel('iteration')
         plt.ylabel('loss') 
         plt.ylim([0, 1.0])
@@ -456,7 +480,7 @@ def main():
         model_save=args.model_save,
         is_progress_save=args.is_progress_save,
         model_progress_save=args.model_progress_save)
-    acgan.train(x_train, y_train, iterations=5000, batch_size=32,
+    acgan.train(x_train, y_train, iterations=2000, batch_size=32,
                 interval=100)
 
 

@@ -29,7 +29,7 @@ from keras.layers import *
 import keras.backend as K
 from src.acgan import mish_keras
 
-def feature_extractor(d: Model, layer_name="d_conv1") -> Model:
+def feature_extractor(d: Model, layer_name="d_conv2") -> Model:
     """
     Discriminatorの中間層を出力するモデルを返す．
 
