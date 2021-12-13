@@ -6,18 +6,18 @@ Example:
 
     Normal data experiments
     ::
-        python3 src/experiments/canogan_test.py --input data/experiments/test/5032AB.csv
+        python3 src/experiments/anogan_test.py --input data/experiments/test/5032AB.csv
 
     Anomaly data experiments
     ::
-        python3 src/experiments/canogan_test.py --input data/experiments/test/5032AB.csv --is_anomaly_test
+        python3 src/experiments/anogan_test.py --input data/experiments/test/5032AB.csv --is_anomaly_test
 
     Save variety of things
     ::
-        python3 src/experiments/canogan_test.py --input data/experiments/test/5032AB.csv\
- --score_save output/experiments/score/canogan/5032AB_normal.csv\
- --generated_save output/experiments/canogan/generate/5032AB_normal.csv\
- --model_save output/experiments/canogan/models/5032AB_normal/\
+        python3 src/experiments/anogan_test.py --input data/experiments/test/5032AB.csv\
+ --score_save output/experiments/score/anogan/5032AB_normal.csv\
+ --generated_save output/experiments/anogan/generate/5032AB_normal.csv\
+ --model_save output/experiments/anogan/models/5032AB_normal/\
 
 """
 import _pathmagic
@@ -46,9 +46,9 @@ K.set_session(sess)
 
 import pandas as pd
 from keras.optimizers import Adam
-# from src.acanogan import anogan_predict
-from src.acanogan.canogan_model import CAnoGAN
-from src.acgan import cgan
+# from src.anogan import anogan_predict
+from src.acanogan.anogan_model import AnoGAN
+from src.acgan import gan
 from src.preprocess import optimize
 
 def arg_parse():
@@ -59,15 +59,10 @@ def arg_parse():
         default="data/experiments/test/5032AB.csv",
         help="input file path(for test)")
     parser.add_argument(
-        "-gm",
-        "--g_model",
-        default="models/experiments/cgan/5032AB/generator.h5",
-        help="cgan generator model file path")
-    parser.add_argument(
-        "-dm",
-        "--d_model",
-        default="models/experiments/cgan/5032AB/discriminator.h5",
-        help="cgan discriminator model file path")
+        "-m",
+        "--model",
+        default="models/experiments/gan/5032AB/generator.h5",
+        help="gan generator model file path")
     parser.add_argument(
         "-c",
         "--combination",
@@ -98,18 +93,18 @@ def arg_parse():
     parser.add_argument(
         "-ss",
         "--score_save",
-        default="output/experiments/score/canogan/5032AB_normal.csv",
+        default="output/experiments/score/anogan/5032AB_normal.csv",
         help="File path to save the result of anomaly score")
     parser.add_argument(
         "-gs",
         "--generated_save",
         default=None,
-        # default="output/experiments/canogan/generate/5032AB_normal.csv",
+        # default="output/experiments/anogan/generate/5032AB_normal.csv",
         help="File path to save the generated data(If None, do not save)")
     parser.add_argument(
         "-ms",
         "--model_save",
-        # default="output/experiments/canogan/models/5032AB_normal/",
+        # default="output/experiments/anogan/models/5032AB_normal/",
         default=None,
         help="Dir of model and input save(If None, do not save)")
     args = parser.parse_args()
@@ -154,15 +149,7 @@ def main():
     print(class_labels)
 
     # AC-Gan model load
-    cgan_obj = cgan.CGAN(
-        num_classes=num_classes,
-        minimum=minimum,
-        maximum=maximum
-    )
-    generator = cgan_obj.generator
-    discriminator = cgan_obj.discriminator
-    generator.load_weights(args.g_model)
-    discriminator.load_weights(args.d_model)
+
 
     # Data normalize,shape
     sub = maximum - minimum
@@ -175,35 +162,47 @@ def main():
 
     # AC-AnoGan model
     optim = Adam(lr=0.001, amsgrad=True)
-    canogan = CAnoGAN(g=generator, d=discriminator, input_dim=100, w=args.w)
-    canogan.compile(optim)
-    canogan.model.summary()
-
-    # 各検証用データ用のモデルの初期値一時保存
-    init_model_path = "models/experiments/canogan/init.h5"
-    os.makedirs(os.path.dirname(init_model_path), exist_ok=True)
-    canogan.model.save_weights(init_model_path)
+    anogan = list()
+    init_model_path = list()
+    for label in range(num_classes):
+        gan_obj = gan.GAN(
+            minimum=minimum,
+            maximum=maximum
+            )
+        generator = gan_obj.generator
+        discriminator = gan_obj.discriminator
+        generator.load_weights(args.model + str(label) + "/generator.h5")
+        discriminator.load_weights(args.model + str(label) + "/discriminator.h5")
+        anogan.append(AnoGAN(g=generator, d=discriminator, input_dim=100, w=args.w))
+        anogan[label].compile(optim)
+        anogan[label].model.summary()
+        # 各検証用データ用のモデルの初期値一時保存
+        init_model_path.append("models/experiments/anogan/" + str(label) + "/init.h5")
+        os.makedirs(os.path.dirname(init_model_path[label]), exist_ok=True)
+        anogan[label].model.save_weights(init_model_path[label])
 
     # model_save make dir
     if args.model_save is not None:
         dir_path = args.model_save
         os.makedirs(dir_path, exist_ok=True)
-    # Test canogan
+
+    # Test anogan
     generated_data_list = np.empty((len(x_test), 120))
     score_list = np.empty(len(x_test))
     z_list = np.empty((len(x_test), 100))
     dates = input.index.to_list()
     i = 0
+
     for label, test_data in zip(class_labels, x_test):
-        canogan.model.load_weights(init_model_path)
+        anogan[label].model.load_weights(init_model_path[label])
         # anomaly_score, generated_data = predict(
-        #     test_data, generator, discriminator, canogan_optim, label=np.array(
+        #     test_data, generator, discriminator, anogan_optim, label=np.array(
         #         [label]), iterations=args.iterations, w=args.w,
 
         # Predict
         x = test_data[np.newaxis, :, :]
-        anomaly_score, generated_data = canogan.compute_anomaly_score(
-            x=x, label=np.array([label]), iterations=args.iterations)
+        anomaly_score, generated_data = anogan[label].compute_anomaly_score(
+            x=x, iterations=args.iterations)
 
         # score_list.append(anomaly_score)
         score_list[i] = anomaly_score
@@ -215,11 +214,11 @@ def main():
             generated_data_list[i] = generated_data
 
         if args.model_save is not None:
-            z_list[i] = canogan.z
+            z_list[i] = anogan[label].z
 
         # Model save
         if args.model_save is not None:
-            canogan.model.save_weights(f"{args.model_save}{dates[i]}.h")
+            anogan[label].model.save_weights(f"{args.model_save}{dates[i]}.h")
 
         # Log
         i += 1

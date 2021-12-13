@@ -35,7 +35,7 @@ import tensorflow as tf
 import random
 
 
-class CGAN:
+class GAN:
     """
     C-GANのモデル.
     num_classes=1を設定した場合，通常のGANとなる．
@@ -52,35 +52,30 @@ class CGAN:
 
     def __init__(
             self,
-            num_classes: int,
             minimum: int,
             maximum: int,
-            w: float = 0.1,
             batch_size: int = 1,
             seed: int = 0,
-            model_save: str = "models/acgan/5032AB/",
+            model_save: str = "models/gan/5032AB/0/",
+            loss_save: str = "output/ensemble_loss/5032AB.png",
             is_progress_save: bool = False,
-            model_progress_save: str = "models/acgan/progress/5032AB/",
+            model_progress_save: str = "models/acgan/progress/5032AB/0/",
     ):
         
-        os.environ['PYTHONHASHSEED'] = '0'
-        session_conf = tf.ConfigProto(
-            intra_op_parallelism_threads=1,
-            inter_op_parallelism_threads=1
-        )
-        np.random.seed(seed)
-        random.seed(seed)
-        tf.set_random_seed(seed)
-        sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
-        K.set_session(sess)
+        # os.environ['PYTHONHASHSEED'] = '0'
+        # session_conf = tf.ConfigProto(
+        #     intra_op_parallelism_threads=1,
+        #     inter_op_parallelism_threads=1
+        # )
+        # np.random.seed(seed)
+        # random.seed(seed)
+        # tf.set_random_seed(seed)
+        # sess = tf.Session(graph=tf.get_default_graph(), config=session_conf)
+        # K.set_session(sess)
 
-        self.num_classes = num_classes
         self.minimum, self.maximum = minimum, maximum
-        if self.num_classes == 1:
-            self.w = 0
-        else:
-            self.w = w
         self.model_save = model_save
+        self.loss_save = loss_save
         # self.is_progress_save = is_progress_save
         # self.model_progress_save = model_progress_save
 
@@ -115,18 +110,18 @@ class CGAN:
         self.set_trainable(self.generator, trainable=False)
         x = Input(shape=(self.width, self.channel))
         z = Input(shape=(self.z_size,))
-        label = Input(shape=[1,], dtype='int32')
-        fake = self.generator([z, label])
+        # label = Input(shape=[1,], dtype='int32')
+        fake = self.generator(z)
 
          # discriminator takes x and gererated fake
-        d_logit_real = self.discriminator([x, label])
-        d_logit_fake = self.discriminator([fake, label])
+        d_logit_real = self.discriminator(x)
+        d_logit_fake = self.discriminator(fake)
 
         # get loss function
         d_loss, g_loss = self.gan_loss(d_logit_real, d_logit_fake)
 
         # build trainable discriminator model
-        self.D_model = Model([x, z, label], [d_logit_real, d_logit_fake])
+        self.D_model = Model([x, z], [d_logit_real, d_logit_fake])
         self.D_model.add_loss(d_loss)
         self.D_model.compile(optimizer=self.Doptimizer, loss=None)
 
@@ -135,7 +130,7 @@ class CGAN:
         self.set_trainable(self.discriminator, trainable=False)
 
         # build trainable generator model
-        self.G_model = Model([z, label], d_logit_fake)
+        self.G_model = Model(z, d_logit_fake)
         self.G_model.add_loss(g_loss)
         self.G_model.compile(optimizer=self.Goptimizer, loss=None)
 
@@ -185,12 +180,7 @@ class CGAN:
             keras Model:Generator
         """
         z = Input(shape=[self.z_size, ])
-        label = Input(shape=[1, ], dtype="int32")
 
-        label_embedding = Flatten()(Embedding(
-            self.num_classes,
-            self.z_size)(label))
-        model_input = Concatenate()([z, label_embedding])
         start_filters = 256
         # 2Upsampling adjust
         in_w = int(self.width / 4)
@@ -198,7 +188,7 @@ class CGAN:
             in_w *
             start_filters,
             # activation="relu",
-            name="g_dense1")(model_input)
+            name="g_dense1")(z)
         x = mish_keras.Mish()(x)
         x = BatchNormalization()(x)
         x = Reshape(
@@ -227,7 +217,7 @@ class CGAN:
         # model.add(Flatten())
         # model.add(Dense(self.width, original_activations="relu", name="out"))
         # model.add(Reshape((self.width, 1), input_shape=(self.width,)))
-        return Model([z, label], [outputs], name="generator")
+        return Model(z, [outputs], name="generator")
 
     def build_discriminator(self) -> Model:
         """
@@ -238,21 +228,6 @@ class CGAN:
         """
         #input = Input(shape=(self.width, self.channel))
         input = Input(shape=(self.width, self.channel))
-        conv = Conv1D(
-            filters=100,
-            kernel_size=15,
-            strides=1,
-            padding="same",
-            activation="relu",
-            name="d_conv")(input)
-        conv = BatchNormalization()(conv)
-        label = Input(shape=[1, ], dtype='int32')
-        label_embedding = Flatten()(Embedding(
-            self.num_classes,
-            100)(label))
-        label_embedding = RepeatVector(self.width)(label_embedding)
-
-        inputs = Concatenate()([conv, label_embedding])
 
         start_filters=64
         x = Conv1D(
@@ -261,7 +236,7 @@ class CGAN:
             strides=2,
             padding="same",
             # activation="relu",
-            name="d_conv1")(inputs)
+            name="d_conv1")(input)
         x = mish_keras.Mish()(x)
         x = (Dropout(0.25))(x)
         # x = BatchNormalization()(x)
@@ -295,7 +270,7 @@ class CGAN:
         # # real or fake
         validity = (Dense(1, activation="sigmoid", name="validity"))(x)
         
-        return Model([input, label], validity)
+        return Model(input, validity, name="discriminator")
 
     def set_trainable(self, model, trainable=False):
         model.trainable = trainable
@@ -320,8 +295,7 @@ class CGAN:
     def train(
             self,
             x_train: np.array,
-            y_train: np.array,
-            iterations: int = 3000,
+            iterations: int = 1000,
             batch_size: int = 32,
             interval: int = 100):
         """
@@ -338,6 +312,7 @@ class CGAN:
         # fake = np.zeros((batch_size, 1))
 
         plt_loss = [[],[]]
+
 
         for iteration in range(iterations):
 
@@ -360,18 +335,11 @@ class CGAN:
 
             # The labels of the digits that the generator tries to create an
             # data representation of
-            if self.num_classes == 1:
-                # all same label
-                fake_labels = np.zeros((batch_size, 1), dtype=int)
-            else:
-                fake_labels = np.random.randint(
-                    0, self.num_classes - 1, (batch_size, 1))
 
             # Generate a half batch of new data
             # gen_data = self.generator.predict([z, fake_labels])
             
             # Real data labels.
-            real_labels = y_train[idx]
 
             # Train the discriminator
             # d_loss_real = self.discriminator.train_on_batch(
@@ -380,7 +348,7 @@ class CGAN:
             #     gen_data, [fake, fake_labels])
             # d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
 
-            d_loss = self.D_model.train_on_batch([real_data, z, real_labels], None)
+            d_loss = self.D_model.train_on_batch([real_data, z], None)
 
             # ---------------------
             #  Train Generator
@@ -389,7 +357,7 @@ class CGAN:
             # g_loss = self.combined.train_on_batch(
             #     [z, fake_labels], [valid, fake_labels])
 
-            g_loss = self.G_model.train_on_batch([z, fake_labels], None)
+            g_loss = self.G_model.train_on_batch(z, None)
 
             # 折れ線用loss
             plt_loss[0].append(d_loss) 
@@ -426,9 +394,7 @@ class CGAN:
         plt.legend()
         #plt.ylim([0.6,0.8])
 
-        args = arg_parse()
-
-        plt.savefig(args.loss_save)
+        plt.savefig(self.loss_save)
 
 def normalize(x: np.array) -> tuple:
     """
@@ -544,6 +510,7 @@ def arg_parse():
 
 
 def main():
+    print("aaaaa")
     warnings.simplefilter('ignore')
     args = arg_parse()
     x_train, minimum, maximum, y_train = preprocess_train_data(
@@ -552,19 +519,20 @@ def main():
         minimum,
         maximum,
         save_path=args.min_max_save)
-    cgan = CGAN(
-        num_classes=int(
-            y_train.max()) + 1,
-        minimum=minimum,
-        maximum=maximum,
-        batch_size = 32,
-        w=0.1,
-        model_save=args.model_save,
-        # is_progress_save=args.is_progress_save,
-        # model_progress_save=args.model_progress_save
-    )
-    cgan.train(x_train, y_train, iterations=4000, batch_size=32,
-                interval=100)
+    num_classes=int(y_train.max()) + 1
+    y_train = y_train.reshape((y_train.size,))
+    for label in range(num_classes):
+        train = x_train[y_train == label]
+        gan = GAN(
+            minimum=minimum,
+            maximum=maximum,
+            batch_size = 32,
+            model_save=(args.model_save + str(label) + "/"),
+            loss_save=(args.loss_save + "_" + str(label) + ".png"),
+            # is_progress_save=args.is_progress_save,
+            # model_progress_save=args.model_progress_save
+        )
+        gan.train(x_train=train, iterations=4000, batch_size=32, interval=100)
 
 if __name__ == "__main__":
-    main
+    main()
