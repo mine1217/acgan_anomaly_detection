@@ -29,7 +29,7 @@ from keras.layers import *
 import keras.backend as K
 from src.acgan import mish_keras
 
-def feature_extractor(d: Model, layer_name="classifier") -> Model:
+def feature_extractor(d: Model, layer_name="d_conv2") -> Model:
     """
     Discriminatorの中間層を出力するモデルを返す．
 
@@ -44,8 +44,8 @@ def feature_extractor(d: Model, layer_name="classifier") -> Model:
         inputs=d.layers[0].input,
         outputs=d.get_layer(layer_name).output)
     intermidiate_model.compile(
-        loss='categorical_crossentropy', 
-        # loss='binary_crossentropy', 
+        # loss='categorical_crossentropy', 
+        loss='binary_crossentropy', 
         # loss='mean_squared_error',
         optimizer='adam')
     # intermidiate_model.summary()
@@ -84,7 +84,7 @@ def sum_of_residual(y_true, y_pred):
     return K.sum(K.abs(y_true - y_pred))
 
 
-class ACAnoGAN:
+class AnoGAN:
     """
     AC-GANにより学習済みのモデルを用いて，入力データの異常度を求めるモデルAC-AnoGANの定義．
 
@@ -110,23 +110,22 @@ class ACAnoGAN:
         self.generator.trainable = False
         # Input layer cann't be trained. Add new layer as same size & same
         # distribution
-        acanogan_input_data = Input(shape=(input_dim,)) 
+        anogan_input_data = Input(shape=(input_dim,)) 
         g_input_data = Dense(
             input_dim,
             activation='tanh',
-            trainable=True)(acanogan_input_data)
+            trainable=True)(anogan_input_data)
         # g_input_data = mish_keras.Mish()(g_input_data)
         # g_input_data = LeakyReLU(0.5)(g_input_data)
         g_input_data = BatchNormalization()(g_input_data)
-        label = Input(shape=[1, ], dtype="int32")
 
         intermidiate_model = feature_extractor(self.discriminator)
         intermidiate_model.trainable = False
 
-        g_out = self.generator([g_input_data, label])
+        g_out = self.generator(g_input_data)
         d_out = intermidiate_model(g_out)
 
-        self.model = Model(inputs=[acanogan_input_data, label], outputs=[g_out, d_out])
+        self.model = Model(inputs=anogan_input_data, outputs=[g_out, d_out])
 
 
     def compile(self, optimizer):
@@ -143,7 +142,6 @@ class ACAnoGAN:
     def compute_anomaly_score(
             self,
             x: np.array,
-            label: np.array,
             iterations: int = 100) -> tuple:
         """
         xの異常度を求める．
@@ -164,10 +162,10 @@ class ACAnoGAN:
         intermidiate_model = feature_extractor(self.discriminator)
         d_x = intermidiate_model.predict(x)
 
-        loss = self.model.fit([self.z, label], [x, d_x], batch_size=1,
+        loss = self.model.fit(self.z, [x, d_x], batch_size=1,
                               epochs=iterations, verbose=0)
         loss = loss.history['loss'][-1]
-        generated_data, _ = self.model.predict([self.z, label])
+        generated_data, _ = self.model.predict(self.z)
 
         return loss, generated_data
 

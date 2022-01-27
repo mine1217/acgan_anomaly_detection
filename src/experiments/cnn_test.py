@@ -227,9 +227,9 @@ def main():
     specificity = zip(list(map(lambda x: "class" + str(x) + ": specificity", list(range(num_classes)))), specificity)
 
     acuarry = metrics.accuracy_score(class_labels, predict_class)
-    precision = metrics.precision_score(class_labels, predict_class, average="macro")
-    recall = metrics.recall_score(class_labels, predict_class, average="macro")
-    f1_score = metrics.f1_score(class_labels, predict_class, average="macro")
+    precision = metrics.precision_score(class_labels, predict_class, average="micro")
+    recall = metrics.recall_score(class_labels, predict_class, average="micro")
+    f1_score = metrics.f1_score(class_labels, predict_class, average="micro")
     print(acuarry)
     result = {
         "precision": precision,

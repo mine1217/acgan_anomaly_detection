@@ -29,7 +29,7 @@ from keras.layers import *
 import keras.backend as K
 from src.acgan import mish_keras
 
-def feature_extractor(d: Model, layer_name="classifier") -> Model:
+def feature_extractor(d: Model, layer_name="d_conv2") -> Model:
     """
     Discriminatorの中間層を出力するモデルを返す．
 
@@ -41,11 +41,11 @@ def feature_extractor(d: Model, layer_name="classifier") -> Model:
         Model:Discriminatorの中間層を出力するモデル．
     """
     intermidiate_model = Model(
-        inputs=d.layers[0].input,
+        inputs=[d.layers[1].input, d.layers[0].input],
         outputs=d.get_layer(layer_name).output)
     intermidiate_model.compile(
-        loss='categorical_crossentropy', 
-        # loss='binary_crossentropy', 
+        # loss='categorical_crossentropy', 
+        loss='binary_crossentropy', 
         # loss='mean_squared_error',
         optimizer='adam')
     # intermidiate_model.summary()
@@ -84,7 +84,7 @@ def sum_of_residual(y_true, y_pred):
     return K.sum(K.abs(y_true - y_pred))
 
 
-class ACAnoGAN:
+class CAnoGAN:
     """
     AC-GANにより学習済みのモデルを用いて，入力データの異常度を求めるモデルAC-AnoGANの定義．
 
@@ -124,7 +124,7 @@ class ACAnoGAN:
         intermidiate_model.trainable = False
 
         g_out = self.generator([g_input_data, label])
-        d_out = intermidiate_model(g_out)
+        d_out = intermidiate_model([g_out, label])
 
         self.model = Model(inputs=[acanogan_input_data, label], outputs=[g_out, d_out])
 
@@ -160,9 +160,10 @@ class ACAnoGAN:
         # z = Input((100,), name="Z")
         # learning for changing latent
         self.z = np.random.randn(1, self.input_dim)
+        print(label)
 
         intermidiate_model = feature_extractor(self.discriminator)
-        d_x = intermidiate_model.predict(x)
+        d_x = intermidiate_model.predict([x, label])
 
         loss = self.model.fit([self.z, label], [x, d_x], batch_size=1,
                               epochs=iterations, verbose=0)

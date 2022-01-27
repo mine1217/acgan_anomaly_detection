@@ -6,18 +6,18 @@ Example:
 
     Normal data experiments
     ::
-        python3 src/experiments/acanogan_test.py --input data/experiments/test/5032AB.csv
+        python3 src/experiments/canogan_test.py --input data/experiments/test/5032AB.csv
 
     Anomaly data experiments
     ::
-        python3 src/experiments/acanogan_test.py --input data/experiments/test/5032AB.csv --is_anomaly_test
+        python3 src/experiments/canogan_test.py --input data/experiments/test/5032AB.csv --is_anomaly_test
 
     Save variety of things
     ::
-        python3 src/experiments/acanogan_test.py --input data/experiments/test/5032AB.csv\
- --score_save output/experiments/score/acanogan/5032AB_normal.csv\
- --generated_save output/experiments/acanogan/generate/5032AB_normal.csv\
- --model_save output/experiments/acanogan/models/5032AB_normal/\
+        python3 src/experiments/canogan_test.py --input data/experiments/test/5032AB.csv\
+ --score_save output/experiments/score/canogan/5032AB_normal.csv\
+ --generated_save output/experiments/canogan/generate/5032AB_normal.csv\
+ --model_save output/experiments/canogan/models/5032AB_normal/\
 
 """
 import _pathmagic
@@ -46,9 +46,9 @@ K.set_session(sess)
 
 import pandas as pd
 from keras.optimizers import Adam
-from src.acanogan import acanogan_predict
-from src.acanogan.acanogan_model import ACAnoGAN
-from src.acgan import acgan
+# from src.acanogan import anogan_predict
+from src.acanogan.canogan_model import CAnoGAN
+from src.acgan import cgan
 from src.preprocess import optimize
 
 def arg_parse():
@@ -61,13 +61,13 @@ def arg_parse():
     parser.add_argument(
         "-gm",
         "--g_model",
-        default="models/experiments/acgan/5032AB/generator.h5",
-        help="acgan generator model file path")
+        default="models/experiments/cgan/5032AB/generator.h5",
+        help="cgan generator model file path")
     parser.add_argument(
         "-dm",
         "--d_model",
-        default="models/experiments/acgan/5032AB/discriminator.h5",
-        help="acgan discriminator model file path")
+        default="models/experiments/cgan/5032AB/discriminator.h5",
+        help="cgan discriminator model file path")
     parser.add_argument(
         "-c",
         "--combination",
@@ -88,7 +88,7 @@ def arg_parse():
         "-w",
         "--w",
         type=float,
-        default=0.5,
+        default=0.1,
         help="parameter")
     parser.add_argument(
         "--is_anomaly_test",
@@ -98,18 +98,18 @@ def arg_parse():
     parser.add_argument(
         "-ss",
         "--score_save",
-        default="output/experiments/score/acanogan/5032AB_normal.csv",
+        default="output/experiments/score/canogan/5032AB_normal.csv",
         help="File path to save the result of anomaly score")
     parser.add_argument(
         "-gs",
         "--generated_save",
         default=None,
-        # default="output/experiments/acanogan/generate/5032AB_normal.csv",
+        # default="output/experiments/canogan/generate/5032AB_normal.csv",
         help="File path to save the generated data(If None, do not save)")
     parser.add_argument(
         "-ms",
         "--model_save",
-        # default="output/experiments/acanogan/models/5032AB_normal/",
+        # default="output/experiments/canogan/models/5032AB_normal/",
         default=None,
         help="Dir of model and input save(If None, do not save)")
     args = parser.parse_args()
@@ -154,13 +154,13 @@ def main():
     print(class_labels)
 
     # AC-Gan model load
-    acgan_obj = acgan.ACGAN(
+    cgan_obj = cgan.CGAN(
         num_classes=num_classes,
         minimum=minimum,
         maximum=maximum
     )
-    generator = acgan_obj.generator
-    discriminator = acgan_obj.discriminator
+    generator = cgan_obj.generator
+    discriminator = cgan_obj.discriminator
     generator.load_weights(args.g_model)
     discriminator.load_weights(args.d_model)
 
@@ -175,34 +175,34 @@ def main():
 
     # AC-AnoGan model
     optim = Adam(lr=0.001, amsgrad=True)
-    acanogan = ACAnoGAN(g=generator, d=discriminator, input_dim=100, w=args.w)
-    acanogan.compile(optim)
-    acanogan.model.summary()
+    canogan = CAnoGAN(g=generator, d=discriminator, input_dim=100, w=args.w)
+    canogan.compile(optim)
+    canogan.model.summary()
 
     # 各検証用データ用のモデルの初期値一時保存
-    init_model_path = "models/experiments/acanogan/init.h5"
+    init_model_path = "models/experiments/canogan/init.h5"
     os.makedirs(os.path.dirname(init_model_path), exist_ok=True)
-    acanogan.model.save_weights(init_model_path)
+    canogan.model.save_weights(init_model_path)
 
     # model_save make dir
     if args.model_save is not None:
         dir_path = args.model_save
         os.makedirs(dir_path, exist_ok=True)
-    # Test acanogan
+    # Test canogan
     generated_data_list = np.empty((len(x_test), 120))
     score_list = np.empty(len(x_test))
     z_list = np.empty((len(x_test), 100))
     dates = input.index.to_list()
     i = 0
     for label, test_data in zip(class_labels, x_test):
-        acanogan.model.load_weights(init_model_path)
+        canogan.model.load_weights(init_model_path)
         # anomaly_score, generated_data = predict(
-        #     test_data, generator, discriminator, acanogan_optim, label=np.array(
+        #     test_data, generator, discriminator, canogan_optim, label=np.array(
         #         [label]), iterations=args.iterations, w=args.w,
 
         # Predict
         x = test_data[np.newaxis, :, :]
-        anomaly_score, generated_data = acanogan.compute_anomaly_score(
+        anomaly_score, generated_data = canogan.compute_anomaly_score(
             x=x, label=np.array([label]), iterations=args.iterations)
 
         # score_list.append(anomaly_score)
@@ -215,11 +215,11 @@ def main():
             generated_data_list[i] = generated_data
 
         if args.model_save is not None:
-            z_list[i] = acanogan.z
+            z_list[i] = canogan.z
 
         # Model save
         if args.model_save is not None:
-            acanogan.model.save_weights(f"{args.model_save}{dates[i]}.h")
+            canogan.model.save_weights(f"{args.model_save}{dates[i]}.h")
 
         # Log
         i += 1

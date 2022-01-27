@@ -192,6 +192,7 @@ def save_combinations(
         "sunday",
         "holiday"]
     best_combinations = dict(zip(key_list, best_combinations_list))
+    print(best_combinations)
     dir_name = os.path.dirname(combination_save)
     if dir_name != "":
         os.makedirs(dir_name, exist_ok=True)
