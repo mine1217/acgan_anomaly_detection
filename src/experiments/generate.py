@@ -25,7 +25,7 @@ import pandas as pd
 from keras.optimizers import Adam
 from src.acanogan import acanogan_predict
 from src.acanogan.acanogan_model import ACAnoGAN
-from src.acgan import acgan
+from src.acgan import acgan, gan
 from src.preprocess import optimize
 
 import datetime
@@ -51,14 +51,6 @@ def main():
     generated_data_list = np.empty((iterations*num_classes, 120))
     
     #generatorロード
-    acgan_obj = acgan.ACGAN(
-        num_classes=num_classes,
-        minimum=minimum,
-        maximum=maximum
-    )
-    
-    generator = acgan_obj.generator
-    generator.load_weights(args.g_model)
     labels = []
     sub = maximum - minimum
     if sub == 0:
@@ -66,11 +58,32 @@ def main():
         sub = 1
 
     #予測
-    for i in range(num_classes):
-        for n in range(iterations):
-            noise = np.random.randn(1, 100)
-            generated_data_list[i*iterations + n] = generator.predict([noise, np.array([i])]).flatten()
-            labels.append("label:" + str(i) + " num:" + str(n))
+    if args.model == "acgan":
+        generator = acgan.ACGAN(
+            num_classes=num_classes,
+            minimum=minimum,
+            maximum=maximum
+            ).generator
+        generator.load_weights(args.g_model)
+        generator.summary()
+        for i in range(num_classes):
+            for n in range(iterations):
+                noise = np.random.randn(1, 100)
+                generated_data_list[i*iterations + n] = generator.predict([noise, np.array([i])]).flatten()
+                labels.append("label:" + str(i) + " num:" + str(n))
+    elif args.model == "gan":
+        generator = gan.GAN(
+            minimum=minimum,
+            maximum=maximum
+            ).generator
+        generator.summary()
+        for i in range(num_classes):
+            generator.load_weights(args.g_model + str(i) + "/generator.h5")
+            for n in range(iterations):
+                noise = np.random.randn(1, 100)
+                generated_data_list[i*iterations + n] = generator.predict(noise).flatten()
+                labels.append("label:" + str(i) + " num:" + str(n))
+
     
     generated_data_list = (generated_data_list * sub) + minimum
 
@@ -111,6 +124,11 @@ def arg_parse():
         "--combination",
         default="data/experiments/combination/5032AB.json",
         help="combination(best label to date) file path")
+    parser.add_argument(
+        "-m",
+        "--model",
+        default="acgan",
+        help="using model")
     args = parser.parse_args()
     return args
 

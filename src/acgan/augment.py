@@ -44,10 +44,11 @@ def width_shift_range(data: np.array) -> np.array:
     Returns:
         np.array:Augmented data
     """
-    data = np.insert(data, -1, 0, axis=1)
-    data = np.insert(data, 0, 0, axis=1)
+    # data = np.insert(data, -1, 0, axis=1)
+    # data = np.insert(data, 0, 0, axis=1)
+    
+    for i, d in enumerate(data):
+        shift_range = int(np.round(np.random.normal(loc=0.0, scale=2.0, size=None)))
+        data[i] = np.roll(d, shift_range)
 
-    shift_range = np.random.randint(-2, 2)
-    data = np.roll(data, shift_range, axis=1)
-    data = np.delete(data, [0, len(data)], axis=1)
     return data

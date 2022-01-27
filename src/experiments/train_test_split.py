@@ -12,10 +12,11 @@ Example:
 import argparse
 import os
 import pandas as pd
+import numpy as np
 import datetime
 
 
-def train_test_split(input, split_date, train_save, test_save, ):
+def train_test_split(input, split_date, train_save, test_save, seed):
     """
     train_test_split
 
@@ -30,9 +31,13 @@ def train_test_split(input, split_date, train_save, test_save, ):
             f"20{d}",
             "%Y.%m.%d") for d in input.index.to_list()]
 
+    np.random.seed(seed)
+
     if split_date is None:
-        train_dates = [d.strftime("%Y.%m.%d")[2:] for d in dates if not serial(d)%3 == 0]
-        test_dates = [d.strftime("%Y.%m.%d")[2:] for d in dates if serial(d)%3 == 0]
+        rand = np.random.randint(1, 4, len(dates))
+        print(rand)
+        train_dates = [d.strftime("%Y.%m.%d")[2:] for i, d in enumerate(dates) if not 3 == rand[i]]
+        test_dates = [d.strftime("%Y.%m.%d")[2:] for i, d in enumerate(dates) if 3 == rand[i]]
     else:
         split_date = datetime.datetime.strptime(
             split_date,
@@ -79,13 +84,19 @@ def arg_parse():
         default="data/experiments/test/503342.csv",
         type=str,
         help='test save csv path')
+    parser.add_argument(
+        '--seed',
+        '-sd',
+        default=0,
+        type=int,
+        help='random_seed')
     args = parser.parse_args()
     return args
 
 
 def main():
     args = arg_parse()
-    train_test_split(args.input, args.date, args.train_save, args.test_save)
+    train_test_split(args.input, args.date, args.train_save, args.test_save, args.seed)
 
 
 if __name__ == '__main__':

@@ -1,21 +1,13 @@
 """
-ACGANによりinputを学習してモデルを保存する．
-num_classes=1を設定した場合，通常のGANとなる．
+GAN & (LSTM)GAN
+(LSTM)GANを使用したい場合は引数の -l のフラグを真にする
 
-Example:
-    5032AB experiments
+AC-GANやCGANとは違い、クラス毎に違うモデルができる
+3つクラスがある場合 3つのモデルができあがる
 
-    progress_save
-    ::
-     python3 src/acgan/acgan.py --input data/experiments/train/5032AB.csv --label data/experiments/label/5032AB_train.csv\
- --min_max_save data/experiments/minmax/5032AB.json --model_save models/experiments/acgan/5032AB/\
- --is_progress_save --model_progress_save models/experiments/acgan/progress/5032AB/
+他の部分はだいたいCGANと一緒
+"""
 
-    Not progress_save
-    ::
-     python3 src/acgan/acgan.py --input data/experiments/train/5032AB.csv --label data/experiments/label/5032AB_train.csv\
- --min_max_save data/experiments/minmax/5032AB.json --model_save models/experiments/acgan/5032AB/
- """
 
 import _pathmagic
 import collections as cl
@@ -60,6 +52,7 @@ class GAN:
             loss_save: str = "output/ensemble_loss/5032AB.png",
             is_progress_save: bool = False,
             model_progress_save: str = "models/acgan/progress/5032AB/0/",
+            l_gan: bool = "false"
     ):
         
         # os.environ['PYTHONHASHSEED'] = '0'
@@ -83,21 +76,22 @@ class GAN:
         self.channel = 1
         self.z_size = 100
         self.Goptimizer = Adam(
-            0.0002, 0.6
+            0.0002, 0.9
             )
         self.Doptimizer = Adam(
-            0.0002, 0.6
+            0.0002, 0.9
             )
         self.start_filters = 512
-        self.hidden_dim = 32
+        self.hidden_dim = 64
         self.batch_size = batch_size
+        self.l_gan = l_gan
 
         # self.losses = [
         #     'binary_crossentropy',
         #     'sparse_categorical_crossentropy']
 
         # self.loss_weights = [(1 - w), w]
-        self.discriminator = self.build_discriminator()
+        self.discriminator = self.build_discriminator(l_gan=self.l_gan)
         # self.discriminator.compile(loss=self.losses,
         #                            optimizer=self.optimizer,
         #                            loss_weights=self.loss_weights,
@@ -158,17 +152,17 @@ class GAN:
         d_loss_real = K.mean(K.binary_crossentropy(output=d_logit_real,
                                                    target=K.ones_like(
                                                        d_logit_real),
-                                                   from_logits=True))
+                                                   from_logits=False))
         d_loss_fake = K.mean(K.binary_crossentropy(output=d_logit_fake,
                                                    target=K.zeros_like(
                                                        d_logit_fake),
-                                                   from_logits=True))
+                                                   from_logits=False))
 
         d_loss = 0.5*(d_loss_real + d_loss_fake)
 
         g_loss = K.mean(K.binary_crossentropy(output=d_logit_fake,
                                               target=K.ones_like(d_logit_fake),
-                                              from_logits=True))
+                                              from_logits=False))
 
         return d_loss, g_loss
 
@@ -181,9 +175,9 @@ class GAN:
         """
         z = Input(shape=[self.z_size, ])
 
-        start_filters = 256
+        start_filters = 512
         # 2Upsampling adjust
-        in_w = int(self.width / 4)
+        in_w = int(self.width / 8)
         x = Dense(
             in_w *
             start_filters,
@@ -194,15 +188,30 @@ class GAN:
         x = Reshape(
             (in_w, start_filters), input_shape=(
                 in_w * start_filters,))(x)
-        x = UpSampling1D(size=2)(x)
-        x = Conv1D(filters=int(start_filters/2), kernel_size=5, padding="same",
-                #    activation="relu",
-                   name="g_conv1")(x)
+        x = Conv1D(
+            filters=int(start_filters/2), 
+            kernel_size=5, 
+            padding="same",
+            #activation="relu",
+            name="g_conv1")(x)
         x = mish_keras.Mish()(x)
         x = BatchNormalization()(x)
-        x = Conv1D(filters=int(start_filters/4), kernel_size=10, padding="same",
+        x = UpSampling1D(size=2)(x)
+        x = Conv1D(
+            filters=int(start_filters/4), 
+            kernel_size=5, 
+            padding="same",
+            #activation="relu",
+            name="g_conv1_2")(x)
+        x = mish_keras.Mish()(x)
+        x = BatchNormalization()(x)
+        x = UpSampling1D(size=2)(x)
+        x = Conv1D(
+            filters=int(start_filters/8), 
+            kernel_size=10,
+            padding="same",
             # activation="relu",
-            name="g_conv1.5")(x)
+            name="g_conv1_3")(x)
         x = mish_keras.Mish()(x)
         x = BatchNormalization()(x)
         x = UpSampling1D(size=2)(x)
@@ -219,7 +228,7 @@ class GAN:
         # model.add(Reshape((self.width, 1), input_shape=(self.width,)))
         return Model(z, [outputs], name="generator")
 
-    def build_discriminator(self) -> Model:
+    def build_discriminator(self, l_gan) -> Model:
         """
         Discriminatorのモデルを定義．
 
@@ -229,44 +238,60 @@ class GAN:
         #input = Input(shape=(self.width, self.channel))
         input = Input(shape=(self.width, self.channel))
 
-        start_filters=64
-        x = Conv1D(
-            filters=start_filters,
-            kernel_size=15,
-            strides=2,
-            padding="same",
-            # activation="relu",
-            name="d_conv1")(input)
-        x = mish_keras.Mish()(x)
-        x = (Dropout(0.25))(x)
-        # x = BatchNormalization()(x)
-        x = Conv1D(
-            filters=start_filters*2,
-            kernel_size=10,
-            strides=2,
-            padding="same",
-            # activation="relu",
-            name="d_conv1.5")(x)
-        x = mish_keras.Mish()(x)
-        x = (Dropout(0.25))(x)
-        x = BatchNormalization()(x)
-        x = Conv1D(
-            filters=start_filters*4,
-            kernel_size=5,
-            strides=1,
-            padding="same",
-            # activation="relu",
-            name="d_conv2")(x)
-        x = mish_keras.Mish()(x)
-        x = (Dropout(0.25))(x)
-        x = BatchNormalization()(x)
-        x = Flatten()(x)
-        x = Dense(units=1024,
-                  # activation="relu",
-                  name="d_dense1")(x)
-        x = mish_keras.Mish()(x)
-        x = BatchNormalization()(x)
-        
+        if l_gan: 
+            x = Bidirectional(CuDNNLSTM(units=self.hidden_dim, return_sequences=True))(input)
+            x = mish_keras.Mish()(x)
+            x = Bidirectional(CuDNNLSTM(units=self.hidden_dim, return_sequences=True))(x)
+            x = mish_keras.Mish()(x)
+            x = Bidirectional(CuDNNLSTM(units=int(self.hidden_dim), name='d_conv2'))(x)
+            x = mish_keras.Mish()(x)
+            x = Dense(64, name='d_conv2')(x)
+            x = mish_keras.Mish()(x)
+        else:
+            start_filters = 64
+            x = Conv1D(
+                filters=start_filters,
+                kernel_size=15,
+                strides=2,
+                padding="same",
+                # activation="relu",
+                name="d_conv1")(input)
+            x = mish_keras.Mish()(x)
+            x = (Dropout(0.25))(x)
+            # x = BatchNormalization()(x)
+            x = Conv1D(
+                filters=start_filters*2,
+                kernel_size=10,
+                strides=2,
+                padding="same",
+                # activation="relu",
+                name="d_conv1.1")(x)
+            x = BatchNormalization()(x)
+            x = mish_keras.Mish()(x)
+            x = (Dropout(0.25))(x)
+            x = Conv1D(
+                filters=start_filters*4,
+                kernel_size=5,
+                strides=2,
+                padding="same",
+                # activation="relu",
+                name="d_conv1.2")(x)
+            x = BatchNormalization()(x)
+            x = mish_keras.Mish()(x)
+            x = (Dropout(0.25))(x)
+            x = Conv1D(
+                filters=start_filters*8,
+                kernel_size=5,
+                strides=1,
+                padding="same",
+                # activation="relu",
+                name="d_conv2")(x)
+            x = BatchNormalization()(x)
+            x = mish_keras.Mish()(x)
+            x = (Dropout(0.25))(x)
+            x = Flatten()(x)
+
+
         # # real or fake
         validity = (Dense(1, activation="sigmoid", name="validity"))(x)
         
@@ -277,20 +302,20 @@ class GAN:
         for layer in model.layers:
             layer.trainable = trainable
 
-    # def save_model_progress(self, iteration: int):
-    #     """
-    #     学習途中のmodelを保存する．
+    def save_model_progress(self, iteration: int):
+        """
+        学習途中のmodelを保存する．
 
-    #     Args:
-    #         iteration:学習回数．
-    #     """
-    #     dir_path = self.model_progress_save
-    #     os.makedirs(dir_path, exist_ok=True)
-    #     # self.combined.save_weights(dir_path + str(iteration) + 'iteration.h5')
-    #     self.generator.save_weights(
-    #         dir_path + str(iteration) + 'iteration_g.h5')
-    #     self.discriminator.save_weights(
-    #         dir_path + str(iteration) + 'iteration_d.h5')
+        Args:
+            iteration:学習回数．
+        """
+        dir_path = self.model_progress_save
+        os.makedirs(dir_path, exist_ok=True)
+        # self.combined.save_weights(dir_path + str(iteration) + 'iteration.h5')
+        self.generator.save_weights(
+            dir_path + str(iteration) + 'iteration_g.h5')
+        self.discriminator.save_weights(
+            dir_path + str(iteration) + 'iteration_d.h5')
 
     def train(
             self,
@@ -312,6 +337,7 @@ class GAN:
         # fake = np.zeros((batch_size, 1))
 
         plt_loss = [[],[]]
+        print(batch_size)
 
 
         for iteration in range(iterations):
@@ -330,23 +356,9 @@ class GAN:
             # Sample noise as generator input
             # z = np.random.uniform(-1, 1, size=(batch_size, self.z_size))
             z = np.random.randn(batch_size, self.z_size)
+            
             # z = np.random.normal(0, 1, (self.batch_size, self.z_size))
             # z = np.random.normal(0, 1, (batch_size, self.z_size))
-
-            # The labels of the digits that the generator tries to create an
-            # data representation of
-
-            # Generate a half batch of new data
-            # gen_data = self.generator.predict([z, fake_labels])
-            
-            # Real data labels.
-
-            # Train the discriminator
-            # d_loss_real = self.discriminator.train_on_batch(
-            #     real_data, [valid, real_labels])
-            # d_loss_fake = self.discriminator.train_on_batch(
-            #     gen_data, [fake, fake_labels])
-            # d_loss = 0.5 * np.add(d_loss_real, d_loss_fake)
 
             d_loss = self.D_model.train_on_batch([real_data, z], None)
 
@@ -354,8 +366,6 @@ class GAN:
             #  Train Generator
             # ---------------------
             # Train the generator
-            # g_loss = self.combined.train_on_batch(
-            #     [z, fake_labels], [valid, fake_labels])
 
             g_loss = self.G_model.train_on_batch(z, None)
 
@@ -390,7 +400,6 @@ class GAN:
         plt.plot(range(0, iterations), plt_loss[1][:iterations], linewidth=1, label="g_loss", color="blue")
         plt.xlabel('iteration')
         plt.ylabel('loss') 
-        plt.ylim([0.3, 1.0])
         plt.legend()
         #plt.ylim([0.6,0.8])
 
@@ -488,29 +497,33 @@ def arg_parse():
         default="models/acgan/5032AB/",
         type=str,
         help="Dir path to save model．")
-    # parser.add_argument(
-    #     "--is_progress_save",
-    #     "-ips",
-    #     action='store_true',
-    #     help='Flag to save the progress of the model or sample plot．default=False')
-    # parser.add_argument(
-    #     "--model_progress_save",
-    #     "-mps",
-    #     default="models/acgan/progress/5032AB/",
-    #     type=str,
-    #     help="Dir path to save the progress of the model．")
+    parser.add_argument(
+        "--is_progress_save",
+        "-ips",
+        action='store_true',
+        help='Flag to save the progress of the model or sample plot．default=False')
+    parser.add_argument(
+        "--model_progress_save",
+        "-mps",
+        default="models/acgan/progress/5032AB/",
+        type=str,
+        help="Dir path to save the progress of the model．")
     parser.add_argument(
         "--loss_save",
         "-ls",
         default="output/experiments/acgan_loss/5032AB.png",
         type=str,
         help="Dir path to save acgan_loss．")
+    parser.add_argument(
+        "--l_gan",
+        "-lg",
+        action='store_true',
+        help='Flag to (LSTM)GAN')
     args = parser.parse_args()
     return args
 
 
 def main():
-    print("aaaaa")
     warnings.simplefilter('ignore')
     args = arg_parse()
     x_train, minimum, maximum, y_train = preprocess_train_data(
@@ -529,10 +542,11 @@ def main():
             batch_size = 32,
             model_save=(args.model_save + str(label) + "/"),
             loss_save=(args.loss_save + "_" + str(label) + ".png"),
-            # is_progress_save=args.is_progress_save,
-            # model_progress_save=args.model_progress_save
+            is_progress_save=args.is_progress_save,
+            model_progress_save=args.model_progress_save,
+            l_gan=args.l_gan
         )
-        gan.train(x_train=train, iterations=4000, batch_size=32, interval=100)
+        gan.train(x_train=train, iterations=3000, batch_size=32, interval=100)
 
 if __name__ == "__main__":
     main()

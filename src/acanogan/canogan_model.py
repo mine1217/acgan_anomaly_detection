@@ -41,14 +41,13 @@ def feature_extractor(d: Model, layer_name="d_conv2") -> Model:
         Model:Discriminatorの中間層を出力するモデル．
     """
     intermidiate_model = Model(
-        inputs=[d.layers[1].input, d.layers[0].input],
+        inputs=[d.layers[2].input, d.layers[0].input],
         outputs=d.get_layer(layer_name).output)
     intermidiate_model.compile(
         # loss='categorical_crossentropy', 
         loss='binary_crossentropy', 
         # loss='mean_squared_error',
         optimizer='adam')
-    # intermidiate_model.summary()
     return intermidiate_model
 
 
@@ -122,6 +121,7 @@ class CAnoGAN:
 
         intermidiate_model = feature_extractor(self.discriminator)
         intermidiate_model.trainable = False
+        intermidiate_model.summary()
 
         g_out = self.generator([g_input_data, label])
         d_out = intermidiate_model([g_out, label])

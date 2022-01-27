@@ -126,7 +126,6 @@ def make_best_class_label(input: str, save: str, combination_save: str, no_gmm: 
         for c in range(3, 8):
             prob_df = gmm_clustering(input, n_clusters=c, seed=seed)
             best_class_label = grouping_class(label, prob_df)
-            print(c)
             if len(best_class_label.columns) == 3:
                 break
     else:
@@ -141,7 +140,7 @@ def make_best_class_label(input: str, save: str, combination_save: str, no_gmm: 
             # There is a cluster that does not have any labels.
             if len(class_label.columns) < len(prob_df.columns):
                 continue
-
+            
             # # Calc cross entropy loss
             loss = log_loss(class_label, prob_df)
 

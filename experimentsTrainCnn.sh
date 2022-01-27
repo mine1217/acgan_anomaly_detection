@@ -1,7 +1,8 @@
 #!/bin/sh
+# CNNを学習
 if [ $# != 1 ]; then
     echo Please specify device_id in the argument.
-    echo Example:sh experimentsTrain.sh 503342
+    echo Example:sh experimentsTrainCnn.sh 503342
     exit 1
 fi
 device_id=$1

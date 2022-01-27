@@ -32,7 +32,7 @@ import matplotlib.pyplot as plt
 from src.acgan import alpha_sign, mish_keras, augment
 
 
-class ACGAN:
+class RACGAN:
     """
     AC-GANのモデル.
     num_classes=1を設定した場合，通常のGANとなる．
@@ -68,13 +68,15 @@ class ACGAN:
         self.is_progress_save = is_progress_save
         self.model_progress_save = model_progress_save
 
+        self.optimizer = Adam(0.0002, 0.5)
+
         self.width = 120
         self.channel = 1
         self.z_size = 100
         self.start_filters = 512
         self.hidden_dim = 64
         self.batch_size = batch_size
-        self.Goptimizer = Adam(0.0002, 0.5)
+        self.Goptimizer = self.optimizer
         self.losses = [
             'binary_crossentropy',
             'sparse_categorical_crossentropy']
@@ -474,7 +476,7 @@ def main():
         minimum,
         maximum,
         save_path=args.min_max_save)
-    acgan = ACGAN(
+    racgan = RACGAN(
         num_classes=int(
             y_train.max()) + 1,
         minimum=minimum,
@@ -483,7 +485,7 @@ def main():
         model_save=args.model_save,
         is_progress_save=args.is_progress_save,
         model_progress_save=args.model_progress_save)
-    acgan.train(x_train, y_train, iterations=2000, batch_size=32,
+    racgan.train(x_train, y_train, iterations=2000, batch_size=32,
                 interval=100)
 
 

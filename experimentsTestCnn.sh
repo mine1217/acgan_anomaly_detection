@@ -1,4 +1,5 @@
 #!/bin/sh
+# CNNでテスト
 if [ $# != 1 ] ; then
     echo Please specify device_id in the argument.
     echo Example:sh experimentsTest.sh 503342
