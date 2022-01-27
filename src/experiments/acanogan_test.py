@@ -59,15 +59,10 @@ def arg_parse():
         default="data/experiments/test/5032AB.csv",
         help="input file path(for test)")
     parser.add_argument(
-        "-gm",
-        "--g_model",
-        default="models/experiments/acgan/5032AB/generator.h5",
-        help="acgan generator model file path")
-    parser.add_argument(
-        "-dm",
-        "--d_model",
-        default="models/experiments/acgan/5032AB/discriminator.h5",
-        help="acgan discriminator model file path")
+        "-m",
+        "--model",
+        default="models/experiments/gan/5032AB/",
+        help="gan generator model file path")
     parser.add_argument(
         "-c",
         "--combination",
@@ -88,7 +83,7 @@ def arg_parse():
         "-w",
         "--w",
         type=float,
-        default=0.5,
+        default=0.1,
         help="parameter")
     parser.add_argument(
         "--is_anomaly_test",
@@ -161,8 +156,8 @@ def main():
     )
     generator = acgan_obj.generator
     discriminator = acgan_obj.discriminator
-    generator.load_weights(args.g_model)
-    discriminator.load_weights(args.d_model)
+    generator.load_weights(args.model + "/generator.h5")
+    discriminator.load_weights(args.model + "/discriminator.h5")
 
     # Data normalize,shape
     sub = maximum - minimum

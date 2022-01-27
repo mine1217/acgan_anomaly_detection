@@ -1,20 +1,7 @@
 """
-ACGANによりinputを学習してモデルを保存する．
-num_classes=1を設定した場合，通常のGANとなる．
-
-Example:
-    5032AB experiments
-
-    progress_save
-    ::
-     python3 src/acgan/acgan.py --input data/experiments/train/5032AB.csv --label data/experiments/label/5032AB_train.csv\
- --min_max_save data/experiments/minmax/5032AB.json --model_save models/experiments/acgan/5032AB/\
-
-    Not progress_save
-    ::
-     python3 src/acgan/acgan.py --input data/experiments/train/5032AB.csv --label data/experiments/label/5032AB_train.csv\
- --min_max_save data/experiments/minmax/5032AB.json --model_save models/experiments/acgan/5032AB/
- """
+CNNでクラス分類タスクをやらせる
+ganの比較用 多分使わん
+"""
 
 import _pathmagic
 import collections as cl

@@ -16,6 +16,7 @@ docker load < sensepro_anomaly_detection.tar
 ```
 
 ci@shimuraのcronで下記を設定して定期実行している．
+現在停止中 動かないよ!!!!.
 
 ```cron
 10 4 1 * * (cd /home/ci/sensepro_anomaly_detection; sh train.sh)
@@ -49,26 +50,37 @@ python2.7 src/preprocess/make_daily_data.py --train
 docker run -it --rm --name sensepro_anomaly_detection_evaluation -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection sh experimentsEvaluation.sh 5032AB
 ```
 
-### その他のデバイス(ID503342の例)
+### 実験方法
 
-ある院生のモニターの2020.01.01以降のデータを検証用データとして実験を行う例．
-
-前処理・train，test分割
+以下のコードで学習から評価を一括でやってしまう 複数回数学習～評価までを繰り返す デフォルトは10回
+デバイスIDの他に使用するモデルを指定する
+acgan
+cgan
+gan
 
 ```zsh
-docker run -it --rm --name sensepro_anomaly_detection_preprocess -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection sh experimentsPreprocess.sh 503342 2020.01.01 
+docker run -it --rm --name sensepro_anomaly_detection_preprocess -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection sh experimentsRoop.sh 5032B9 acgan
+```
+
+以下 別々にやりたい場合(AC-GAN)
+
+前処理・train，test分割
+デバイスidとseed値を指定する
+
+```zsh
+docker run -it --rm --name sensepro_anomaly_detection_preprocess -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection sh experimentsPreprocess.sh 5032B9 0
 ```
 
 train
 
 ```zsh
-docker run -it --rm --name sensepro_anomaly_detection_train -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection sh experimentsTrain.sh 503342
+docker run -it --rm --name sensepro_anomaly_detection_train -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection sh experimentsTrain.sh 5032B9
 ```
 
 test
 
 ```zsh
-docker run -it --rm --name sensepro_anomaly_detection_test -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection sh experimentsTest.sh 503342
+docker run -it --rm --name sensepro_anomaly_detection_test -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection sh experimentsTest.sh 5032B9
 ```
 
 evaluation

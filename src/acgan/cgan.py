@@ -1,21 +1,6 @@
 """
-ACGANによりinputを学習してモデルを保存する．
-num_classes=1を設定した場合，通常のGANとなる．
-
-Example:
-    5032AB experiments
-
-    progress_save
-    ::
-     python3 src/acgan/acgan.py --input data/experiments/train/5032AB.csv --label data/experiments/label/5032AB_train.csv\
- --min_max_save data/experiments/minmax/5032AB.json --model_save models/experiments/acgan/5032AB/\
- --is_progress_save --model_progress_save models/experiments/acgan/progress/5032AB/
-
-    Not progress_save
-    ::
-     python3 src/acgan/acgan.py --input data/experiments/train/5032AB.csv --label data/experiments/label/5032AB_train.csv\
- --min_max_save data/experiments/minmax/5032AB.json --model_save models/experiments/acgan/5032AB/
- """
+CGAN
+"""
 
 import _pathmagic
 import collections as cl
@@ -163,17 +148,17 @@ class CGAN:
         d_loss_real = K.mean(K.binary_crossentropy(output=d_logit_real,
                                                    target=K.ones_like(
                                                        d_logit_real),
-                                                   from_logits=True))
+                                                   from_logits=False))
         d_loss_fake = K.mean(K.binary_crossentropy(output=d_logit_fake,
                                                    target=K.zeros_like(
                                                        d_logit_fake),
-                                                   from_logits=True))
+                                                   from_logits=False))
 
         d_loss = 0.5*(d_loss_real + d_loss_fake)
 
         g_loss = K.mean(K.binary_crossentropy(output=d_logit_fake,
                                               target=K.ones_like(d_logit_fake),
-                                              from_logits=True))
+                                              from_logits=False))
 
         return d_loss, g_loss
 
@@ -191,6 +176,7 @@ class CGAN:
             self.num_classes,
             self.z_size)(label))
         model_input = Concatenate()([z, label_embedding])
+
         start_filters = 256
         # 2Upsampling adjust
         in_w = int(self.width / 4)
@@ -238,23 +224,24 @@ class CGAN:
         """
         #input = Input(shape=(self.width, self.channel))
         input = Input(shape=(self.width, self.channel))
-        conv = Conv1D(
-            filters=100,
-            kernel_size=15,
-            strides=1,
-            padding="same",
-            activation="relu",
-            name="d_conv")(input)
-        conv = BatchNormalization()(conv)
+        # conv = Conv1D(
+        #     filters=100,
+        #     kernel_size=15,
+        #     strides=1,
+        #     padding="same",
+        #     activation="relu",
+        #     name="d_conv")(input)
+        # conv = BatchNormalization()(conv)
         label = Input(shape=[1, ], dtype='int32')
-        label_embedding = Flatten()(Embedding(
+        label_embedding = Embedding(
             self.num_classes,
-            100)(label))
-        label_embedding = RepeatVector(self.width)(label_embedding)
+            120)(label)
+        label_embedding = Reshape((120,1))(label_embedding)
+        # label_embedding = RepeatVector(self.width)(label_embedding)
 
-        inputs = Concatenate()([conv, label_embedding])
+        inputs = Concatenate(axis=1)([input, label_embedding])
 
-        start_filters=64
+        start_filters = 32
         x = Conv1D(
             filters=start_filters,
             kernel_size=15,
@@ -271,14 +258,14 @@ class CGAN:
             strides=2,
             padding="same",
             # activation="relu",
-            name="d_conv1.5")(x)
+            name="d_conv1.1")(x)
         x = mish_keras.Mish()(x)
         x = (Dropout(0.25))(x)
         x = BatchNormalization()(x)
         x = Conv1D(
             filters=start_filters*4,
             kernel_size=5,
-            strides=1,
+            strides=2,
             padding="same",
             # activation="relu",
             name="d_conv2")(x)
@@ -290,8 +277,7 @@ class CGAN:
                   # activation="relu",
                   name="d_dense1")(x)
         x = mish_keras.Mish()(x)
-        x = BatchNormalization()(x)
-        
+
         # # real or fake
         validity = (Dense(1, activation="sigmoid", name="validity"))(x)
         
@@ -422,7 +408,7 @@ class CGAN:
         plt.plot(range(0, iterations), plt_loss[1][:iterations], linewidth=1, label="g_loss", color="blue")
         plt.xlabel('iteration')
         plt.ylabel('loss') 
-        plt.ylim([0.3, 1.0])
+        # plt.ylim([0.3, 1.0])
         plt.legend()
         #plt.ylim([0.6,0.8])
 
@@ -567,4 +553,4 @@ def main():
                 interval=100)
 
 if __name__ == "__main__":
-    main
+    main()

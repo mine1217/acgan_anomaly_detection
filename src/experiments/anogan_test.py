@@ -1,5 +1,7 @@
 """
-AC-GANによる学習済みmodelを用いて異常検知を行う実験用スクリプト．
+GANによる学習済みmodelを用いて異常検知を行う実験用スクリプト．
+!!!!!!!!!!!!!!!!!!!!(LSTM)GANを使用する場合は必ずl_ganフラグを真にする!!!!!!!!!!!!!!!!!!
+
 
 Example:
     5032AB example
@@ -61,7 +63,7 @@ def arg_parse():
     parser.add_argument(
         "-m",
         "--model",
-        default="models/experiments/gan/5032AB/generator.h5",
+        default="models/experiments/gan/5032AB/",
         help="gan generator model file path")
     parser.add_argument(
         "-c",
@@ -107,6 +109,11 @@ def arg_parse():
         # default="output/experiments/anogan/models/5032AB_normal/",
         default=None,
         help="Dir of model and input save(If None, do not save)")
+    parser.add_argument(
+        "--l_gan",
+        "-lg",
+        action='store_true',
+        help='Flag to (LSTM)GAN')
     args = parser.parse_args()
     return args
 
@@ -148,8 +155,6 @@ def main():
         class_labels = random_class_label(class_labels)
     print(class_labels)
 
-    # AC-Gan model load
-
 
     # Data normalize,shape
     sub = maximum - minimum
@@ -160,14 +165,15 @@ def main():
     x_test = x_test[:, :, None]
     x_test = x_test.astype(np.float32)
 
-    # AC-AnoGan model
+    # AnoGan model
     optim = Adam(lr=0.001, amsgrad=True)
     anogan = list()
     init_model_path = list()
     for label in range(num_classes):
         gan_obj = gan.GAN(
             minimum=minimum,
-            maximum=maximum
+            maximum=maximum,
+            l_gan=args.l_gan
             )
         generator = gan_obj.generator
         discriminator = gan_obj.discriminator

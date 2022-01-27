@@ -1,4 +1,5 @@
 #!/bin/sh
+# AC-GANを学習
 if [ $# != 1 ]; then
     echo Please specify device_id in the argument.
     echo Example:sh experimentsTrain.sh 503342

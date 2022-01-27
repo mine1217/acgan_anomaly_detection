@@ -69,7 +69,7 @@ class ACGAN:
         self.width = 120
         self.channel = 1
         self.z_size = 100
-        self.optimizer = Adam(0.0002, 0.5)
+        self.optimizer = Adam(0.0002, 0.9)
         self.losses = [
             'binary_crossentropy',
             'sparse_categorical_crossentropy']
@@ -117,10 +117,10 @@ class ACGAN:
         label_embedding = Flatten()(Embedding(
             self.num_classes,
             self.z_size)(label))
-        model_input = Concatenate()([z, label_embedding])
-        start_filters = 256
+        model_input = multiply([z, label_embedding])
+        start_filters = 512
         # 2Upsampling adjust
-        in_w = int(self.width / 4)
+        in_w = int(self.width / 8)
         x = Dense(
             in_w *
             start_filters,
@@ -131,7 +131,6 @@ class ACGAN:
         x = Reshape(
             (in_w, start_filters), input_shape=(
                 in_w * start_filters,))(x)
-        x = UpSampling1D(size=2)(x)
         x = Conv1D(
             filters=int(start_filters/2), 
             kernel_size=5, 
@@ -140,12 +139,22 @@ class ACGAN:
             name="g_conv1")(x)
         x = mish_keras.Mish()(x)
         x = BatchNormalization()(x)
+        x = UpSampling1D(size=2)(x)
         x = Conv1D(
             filters=int(start_filters/4), 
+            kernel_size=5, 
+            padding="same",
+            #activation="relu",
+            name="g_conv1_2")(x)
+        x = mish_keras.Mish()(x)
+        x = BatchNormalization()(x)
+        x = UpSampling1D(size=2)(x)
+        x = Conv1D(
+            filters=int(start_filters/8), 
             kernel_size=10,
             padding="same",
             # activation="relu",
-            name="g_conv1.5")(x)
+            name="g_conv1_3")(x)
         x = mish_keras.Mish()(x)
         x = BatchNormalization()(x)
         x = UpSampling1D(size=2)(x)
@@ -170,7 +179,7 @@ class ACGAN:
             keras Model:Discriminator
         """
         input = Input(shape=(self.width, self.channel))
-        start_filters = 64
+        start_filters = 32
         x = Conv1D(
             filters=start_filters,
             kernel_size=15,
@@ -187,48 +196,58 @@ class ACGAN:
             strides=2,
             padding="same",
             # activation="relu",
-            name="d_conv1.5")(x)
+            name="d_conv1.1")(x)
         x = mish_keras.Mish()(x)
-        x = (Dropout(0.25))(x)
         x = BatchNormalization()(x)
+        x = (Dropout(0.25))(x)
         x = Conv1D(
             filters=start_filters*4,
+            kernel_size=5,
+            strides=2,
+            padding="same",
+            # activation="relu",
+            name="d_conv1.2")(x)
+        x = mish_keras.Mish()(x)
+        x = BatchNormalization()(x)
+        x = (Dropout(0.25))(x)
+        x = Conv1D(
+            filters=start_filters*8,
             kernel_size=5,
             strides=1,
             padding="same",
             # activation="relu",
             name="d_conv2")(x)
         x = mish_keras.Mish()(x)
-        x = (Dropout(0.25))(x)
         x = BatchNormalization()(x)
-        x = Flatten()(x)
-        x = Dense(units=1024,
-                  # activation="relu",
-                  name="d_dense1")(x)
-        x = mish_keras.Mish()(x)
-        features = BatchNormalization()(x)
+        x = (Dropout(0.25))(x)
+        features = Flatten()(x)
+        # x = Dense(units=1024,
+        #           # activation="relu",
+        #           name="d_dense1")(x)
+        # x = mish_keras.Mish()(x)
+        # features = BatchNormalization()(x)
 
         # real or face
-        validity = Dense(
-            units=128,
-            # activation = "sigmoid",
-            name="validity_dense"
-        )(features)
-        validity = mish_keras.Mish()(validity)
-        validity = BatchNormalization()(validity)
-        validity = Dense(1, activation="sigmoid", name="validity")(validity)
+        # validity = Dense(
+        #     units=128,
+        #     # activation = "sigmoid",
+        #     name="validity_dense"
+        # )(features)
+        # validity = mish_keras.Mish()(validity)
+        # validity = BatchNormalization()(validity)
+        validity = Dense(1, activation="sigmoid", name="validity")(features)
         # auxiliary classifier
-        classifier = Dense(
-            units=64*self.num_classes,
-            # activation = "sigmoid",
-            name="classifier_dense"
-        )(features)
-        classifier = mish_keras.Mish()(classifier)
-        classifier = BatchNormalization()(classifier)
+        # classifier = Dense(
+        #     units=64*self.num_classes,
+        #     # activation = "sigmoid",
+        #     name="classifier_dense"
+        # )(features)
+        # classifier = mish_keras.Mish()(classifier)
+        # classifier = BatchNormalization()(classifier)
         classifier = Dense(
             self.num_classes,
             activation="softmax",
-            name="classifier")(classifier)
+            name="classifier")(features)
         return Model([input], [validity, classifier], name="discriminator")
 
     def save_model_progress(self, iteration: int):
@@ -251,7 +270,7 @@ class ACGAN:
             x_train: np.array,
             y_train: np.array,
             iterations: int = 3000,
-            batch_size: int = 32,
+            batch_size: int = 2,
             interval: int = 100):
         """
 
@@ -266,7 +285,7 @@ class ACGAN:
         valid = np.ones((batch_size, 1))
         fake = np.zeros((batch_size, 1))
 
-        plt_loss = [[],[]]
+        plt_loss = [[],[],[],[]]
 
         for iteration in range(iterations):
 
@@ -318,13 +337,15 @@ class ACGAN:
 
             # 折れ線用loss
             plt_loss[0].append(g_loss[1]) 
-            plt_loss[1].append(d_loss[1]) 
+            plt_loss[1].append(d_loss[1])
+            plt_loss[2].append(g_loss[2]) 
+            plt_loss[3].append(d_loss[2])
 
             # If at save interval => save generated samples,model
             if iteration % interval == 0:
                 print(
-                    "%d [D loss: %f] [DV loss: %f] [DC loss: %f] [DR loss: %f] [DF loss: %f] [G loss: %f]" %
-                    (iteration, d_loss[0], d_loss[1], d_loss[2], d_loss_real[0], d_loss_fake[0], g_loss[0]))
+                    "%d [D loss: %f] [DV loss: %f] [DC loss: %f] [GV loss: %f] [GC loss: %f] [G loss: %f]" %
+                    (iteration, d_loss[0], d_loss[1], d_loss[2], g_loss[1], g_loss[2], g_loss[0]))
                 if self.is_progress_save:
                     self.save_model_progress(iteration)
         # ---------------------
@@ -338,11 +359,13 @@ class ACGAN:
 
         plt.figure(dpi=500)
 
-        plt.plot(range(0, iterations), plt_loss[0][:iterations], linewidth=1, label="g_loss", color="red")
-        plt.plot(range(0, iterations), plt_loss[1][:iterations], linewidth=1, label="d_loss", color="blue")
+        plt.plot(range(0, iterations), plt_loss[0][:iterations], linewidth=1, label="g_valid_loss", color="red")
+        plt.plot(range(0, iterations), plt_loss[1][:iterations], linewidth=1, label="d_valid_loss", color="blue")
+        plt.plot(range(0, iterations), plt_loss[2][:iterations], linewidth=1, label="g_class_loss", color="salmon")
+        plt.plot(range(0, iterations), plt_loss[3][:iterations], linewidth=1, label="d_class_loss", color="cyan")
         plt.xlabel('iteration')
         plt.ylabel('loss') 
-        plt.ylim([0, 1.0])
+        plt.ylim([0, 6.0])
         plt.legend()
 
         args = arg_parse()
@@ -480,7 +503,7 @@ def main():
         model_save=args.model_save,
         is_progress_save=args.is_progress_save,
         model_progress_save=args.model_progress_save)
-    acgan.train(x_train, y_train, iterations=2000, batch_size=32,
+    acgan.train(x_train, y_train, iterations=4000, batch_size=32,
                 interval=100)
 
 

@@ -1,3 +1,13 @@
+"""
+実験に使用するデータをumapを使って散布図にする.
+あとクラスタ間距離を求めてターミナルに出力する.
+
+Example:
+    5032AB example
+    ::
+    python3 -i src/preprocess/umap_ex.sh -i "data/processed/experiments/5032AB.csv" -c data/experiments/combination/5032AB.json" -s "output/experiments/umap/5032AB.png"
+"""
+
 import datetime
 import jpholiday
 import json
@@ -86,6 +96,44 @@ def main():
             plt.scatter(embedding_x[y == n],
                         embedding_y[y == n],
                         label=n)
+
+    num_classes = int(max(combination)) + 1
+    x = embedding
+    distance = np.zeros((num_classes , num_classes))
+    distanceCG = np.zeros((num_classes , num_classes))
+    var = np.zeros((num_classes, 2))
+    sumAll = 0
+    sumAllCG = 0
+
+    for i in np.unique(y):
+        dataA = x[y == i]
+        for n in np.unique(y):
+            if n == i: 
+                continue
+            dataB = x[y == n]
+            avg = 0
+            sum = 0
+            for a in dataA:
+                for b in dataB:
+                    sum += np.linalg.norm(a-b)
+            avg = sum / (len(dataA) * len(dataB))
+            sumAll += avg
+            distance[i][n] = np.round(avg, decimals=4)
+            distanceCG[i][n] = np.round(np.linalg.norm(np.average(dataA, axis = 0) - np.average(dataB, axis = 0)), decimals=4)
+        var[i] = np.var(dataA, axis=0)
+
+        
+    
+    print("******群平均距離*******")
+    print(distance)
+    print("******平均群平均距離*******")
+    print(sumAll / (num_classes * (num_classes -1)))
+    print("******重心間距離*******")
+    print(distanceCG)
+    print("******平均重心間距離*******")
+    print(np.sum(distanceCG) / (num_classes * (num_classes -1)))
+    print("******クラスタ毎のデータの分散*******")
+    print(np.round(np.average(var, axis=1), decimals=4))
     
     # if args.day_label:
     #     day_labels = input.index.to_list()
