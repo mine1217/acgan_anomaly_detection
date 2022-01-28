@@ -53,28 +53,49 @@ docker run -it --rm --name sensepro_anomaly_detection_evaluation -v $PWD:/worksp
 ### 実験（一括)
 
 以下のコードで学習から評価を一括でやってしまう 複数回数学習～評価までを繰り返す デフォルトは10回
-デバイスIDの他に使用するモデルを指定する
-acgan
-cgan
-gan
+シェルスクリプトにデバイスIDと使用するモデル名を指定する 
+- acgan
+- cgan
+- gan
 
 ```zsh
-docker run -it --rm --name sensepro_anomaly_detection_preprocess -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection sh experimentsRoop.sh 5032B9 acgan
+docker run --runtime=nvidia -it --rm --name sensepro_anomaly_detection_preprocess -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection 
+  sh experimentsRoop.sh 5032B9 acgan
 ```
 
-(LSTM)GANを使用したい場合は
-モデルにはganを指定し、61行目の"src/acgan/gan.py"を実行する引数に"--l_gan"オプションを追加する
+出力場所は以下の通り
+- モデル(重み)
+  - models/experiments/ganモデル名/デバイス名_回数/*.h5
+  - models/experiments/anoganモデル名/デバイス名_回数/*.h5
+- lossの推移
+  - output/experiments/loss/デバイス名_ganモデル名_回数.png
+- 実験結果
+  - output/experiments/score/デバイス名_anoganモデル名_回数_normal.csv
+  - output/experiments/score/デバイス名_anoganモデル名_回数_anomaly.csv
+  - output/experiments/roc_curve/デバイス名_ganモデル名_回数.png
+  - output/experiments/accuracy/デバイス名_ganモデル名_回数.csv
+- AnoGANで生成されたデータ
+  - output/experiments/generated_data/デバイス名_anoganモデル名_回数_normal.csv
+  - output/experiments/generated_data/デバイス名_anoganモデル名_回数_anomaly.csv
+  - output/elect_graph/generated/デバイス名_anoganモデル名_回数_normal/*.png
+  - output/elect_graph/generated/デバイス名_anoganモデル名_回数_anomaly/*.png
+- 正常な検査データと生成データのユークリッド距離
+  - output/experiments/euclidean/デバイス名_anoganモデル名_回数
+
+
+
+(LSTM)GANを使用したい場合はモデルにはganを指定し、
+experimentRoop.sh内の61行目の"src/acgan/gan.py"を実行する引数に"--l_gan"オプションを追加する
 
 ```zsh
 python3 src/acgan/${gan_model}.py 
---l_gan
---input data/experiments/train/$device_id.csv 
---label data/experiments/label/$device_id.csv 
---min_max_save data/experiments/minmax/$device_id.json 
---model_save models/experiments/${gan_model}/${device_id}_${i}/ 
---loss_save output/experiments/loss/${device_id}_${gan_model}_${i}.png 
+  --l_gan
+  --input data/experiments/train/$device_id.csv 
+  --label data/experiments/label/$device_id.csv 
+  --min_max_save data/experiments/minmax/$device_id.json 
+  --model_save models/experiments/${gan_model}/${device_id}_${i}/ 
+  --loss_save output/experiments/loss/${device_id}_${gan_model}_${i}.png 
 ```
-experimentRoop.sh内の、
 
 ### 実験（手順ごと)
 
@@ -84,19 +105,22 @@ experimentRoop.sh内の、
 デバイスidとseed値を指定する
 
 ```zsh
-docker run -it --rm --name sensepro_anomaly_detection_preprocess -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection sh experimentsPreprocess.sh 5032B9 0
+docker run --runtime=nvidia -it --rm --name sensepro_anomaly_detection_preprocess -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection 
+  sh experimentsPreprocess.sh 5032B9 0
 ```
 
 train
 
 ```zsh
-docker run -it --rm --name sensepro_anomaly_detection_train -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection sh experimentsTrain.sh 5032B9
+docker run --runtime=nvidia -it --rm --name sensepro_anomaly_detection_train -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection 
+  sh experimentsTrain.sh 5032B9
 ```
 
 test
 
 ```zsh
-docker run -it --rm --name sensepro_anomaly_detection_test -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection sh experimentsTest.sh 5032B9
+docker run --runtime=nvidia -it --rm --name sensepro_anomaly_detection_test -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection 
+  sh experimentsTest.sh 5032B9
 ```
 
 evaluation
@@ -105,7 +129,8 @@ evaluation
 - output/experiments/accuracy/に最適な閾値のときの精度をcsvファイルに出力．
 
 ```zsh
-docker run -it --rm --name sensepro_anomaly_detection_evaluation -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection sh experimentsEvaluation.sh 503342
+docker run --runtime=nvidia -it --rm --name sensepro_anomaly_detection_evaluation -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection 
+  sh experimentsEvaluation.sh 503342
 ```
 
 ## Docs
