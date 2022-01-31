@@ -52,7 +52,8 @@ docker run -it --rm --name sensepro_anomaly_detection_evaluation -v $PWD:/worksp
 
 ### 実験（一括)
 
-以下のコードで学習から評価を一括でやってしまう 複数回数学習～評価までを繰り返す デフォルトは10回
+以下のコードで学習から評価を一括でやってしまう 
+複数回数学習～評価までを繰り返す デフォルトは10回
 シェルスクリプトにデバイスIDと使用するモデル名を指定する 
 - acgan
 - cgan
@@ -63,7 +64,7 @@ docker run --runtime=nvidia -it --rm --name sensepro_anomaly_detection_preproces
   sh experimentsRoop.sh 5032B9 acgan
 ```
 
-出力場所は以下の通り
+出力場所は以下の通り.
 - モデル(重み)
   - models/experiments/ganモデル名/デバイス名_回数/*.h5
   - models/experiments/anoganモデル名/デバイス名_回数/*.h5
@@ -84,8 +85,8 @@ docker run --runtime=nvidia -it --rm --name sensepro_anomaly_detection_preproces
 
 
 
-(LSTM)GANを使用したい場合はモデルにはganを指定し、
-experimentRoop.sh内の61行目の"src/acgan/gan.py"を実行する引数に"--l_gan"オプションを追加する
+(LSTM)GANを使用したい場合はモデルにはganを指定し,
+experimentRoop.sh内の61行目の"src/acgan/gan.py"を実行する引数に"--l_gan"オプションを追加する.
 
 ```zsh
 python3 src/acgan/${gan_model}.py 
@@ -133,8 +134,18 @@ docker run --runtime=nvidia -it --rm --name sensepro_anomaly_detection_evaluatio
   sh experimentsEvaluation.sh 503342
 ```
 
-## Docs
+## Umap
 
-ブラウザから
-[docs/\_build/index.html](docs/_build/index.html)
-を参照．
+以下のコードで論文に載せたUmapによる散布図を出力.
+２種類のUmapを出力する.
+- gmmでクラスタリングした結果を色分けして表示
+  - output/experiments/umap/gmm
+- 日付が進む毎に連続的に色を変えて表示
+  - output/experiments/umap/weekday
+
+```zsh
+docker run --runtime=nvidia -it --rm --name sensepro_anomaly_detection_umap -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection 
+  sh experimentsUmap.sh 5032B9
+```
+
+また、同時にクラスタ間距離をターミナルに表示する.
