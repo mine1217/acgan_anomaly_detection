@@ -47,7 +47,7 @@ python2.7 src/preprocess/make_daily_data.py --train
 - 5032AB_test_normal_w=0.1.csv，5032AB_test_anomaly_w=0.1.csvから再現可能．
 
 ```zsh
-docker run -it --rm --name sensepro_anomaly_detection_evaluation -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection sh experimentsEvaluation.sh 5032B9
+docker run -it --rm --name sensepro_anomaly_detection_evaluation -v $PWD:/workspace -w /workspace sensepro_anomaly_detection sh experimentsEvaluation.sh 5032B9
 ```
 
 ### 実験（一括)
