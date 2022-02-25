@@ -60,7 +60,7 @@ docker run -it --rm --name sensepro_anomaly_detection_evaluation -v $PWD:/worksp
 - gan
 
 ```zsh
-docker run --runtime=nvidia -it --rm --name sensepro_anomaly_detection_preprocess -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection 
+docker run --runtime=nvidia -it --rm --name sensepro_anomaly_detection_preprocess -v $PWD:/workspace -w /workspace sensepro_anomaly_detection 
   sh experimentsRoop.sh 5032B9 acgan
 ```
 
