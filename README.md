@@ -60,7 +60,7 @@ docker run -it --rm --name sensepro_anomaly_detection_evaluation -v $PWD:/worksp
 - gan
 
 ```zsh
-docker run --runtime=nvidia -it --rm --name sensepro_anomaly_detection_preprocess -v $PWD:/workspace -w /workspace sensepro_anomaly_detection 
+docker run --gpus all -it --rm --name sensepro_anomaly_detection_preprocess -v $PWD:/workspace -w /workspace sensepro_anomaly_detection 
   sh experimentsRoop.sh 5032B9 acgan
 ```
 
@@ -106,21 +106,21 @@ python3 src/acgan/${gan_model}.py
 デバイスidとseed値を指定する
 
 ```zsh
-docker run --runtime=nvidia -it --rm --name sensepro_anomaly_detection_preprocess -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection 
+docker run --gpus all -it --rm --name sensepro_anomaly_detection_preprocess -v $PWD:/workspace -w /workspace sensepro_anomaly_detection 
   sh experimentsPreprocess.sh 5032B9 0
 ```
 
 train
 
 ```zsh
-docker run --runtime=nvidia -it --rm --name sensepro_anomaly_detection_train -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection 
+docker run --gpus all -it --rm --name sensepro_anomaly_detection_train -v $PWD:/workspace -w /workspace sensepro_anomaly_detection 
   sh experimentsTrain.sh 5032B9
 ```
 
 test
 
 ```zsh
-docker run --runtime=nvidia -it --rm --name sensepro_anomaly_detection_test -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection 
+docker run --gpus all -it --rm --name sensepro_anomaly_detection_test -v $PWD:/workspace -w /workspace sensepro_anomaly_detection 
   sh experimentsTest.sh 5032B9
 ```
 
@@ -130,8 +130,8 @@ evaluation
 - output/experiments/accuracy/に最適な閾値のときの精度をcsvファイルに出力．
 
 ```zsh
-docker run --runtime=nvidia -it --rm --name sensepro_anomaly_detection_evaluation -v $PWD:/workspace -w /workspace minamotofordocker/sensepro_anomaly_detection 
-  sh experimentsEvaluation.sh 503342
+docker run --gpus all -it --rm --name sensepro_anomaly_detection_evaluation -v $PWD:/workspace -w /workspace sensepro_anomaly_detection 
+  sh experimentsEvaluation.sh 5032B9
 ```
 
 ## Umap
