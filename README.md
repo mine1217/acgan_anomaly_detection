@@ -6,7 +6,7 @@ Anomaly detection for sensepro life watching system．
 
 ## Environment
 
-### 運用設定
+### Docker
 
 docker imageがなければimage fileからload．
 
@@ -14,8 +14,11 @@ docker imageがなければimage fileからload．
 docker load < sensepro_anomaly_detection.tar
 ```
 
+
+### 電力データの取得(現在停止中)
+
 ci@shimuraのcronで下記を設定して定期実行している．
-現在停止中 動かないよ!!!!.
+
 
 ```cron
 10 4 1 * * (cd /home/ci/sensepro_anomaly_detection; sh train.sh)
@@ -27,8 +30,6 @@ ci@shimuraのcronで下記を設定して定期実行している．
 - jsonファイルはci@ci11.info.kindai.ac.jp:/var/www/html/sp/deviceState/に送信される．
 - アプリはci@ci11.info.kindai.ac.jp:/var/www/html/sp/deviceState/のjsonファイルを参照する．
 - /home/ci/sensepro_anomaly_detectionは本番環境となるので，ここで実験を行わないこと．
-
-### 実験設定
 
 最新データのダウンロードとデータセットの作成
 
