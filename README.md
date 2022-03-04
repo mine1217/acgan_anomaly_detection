@@ -11,7 +11,6 @@ Anomaly detection for sensepro life watching system．
 docker imageがなければimage fileからload．
 
 ```zsh
-cd /home/ci/sensepro_anomaly_detection
 docker load < sensepro_anomaly_detection.tar
 ```
 
